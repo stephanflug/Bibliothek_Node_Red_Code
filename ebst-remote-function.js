@@ -15,7 +15,7 @@ function fetchJson(url, redirects = 0) {
 
         const req = https.get(url, {
             headers: {
-                "User-Agent": "EBST-NodeRED-Remote-Function/1.1.0",
+                "User-Agent": "EBST-NodeRED-Remote-Function/1.2.0",
                 "Accept": "application/json"
             },
             timeout: 15000
@@ -79,6 +79,8 @@ module.exports = function(RED) {
         node.stationIndex = config.stationIndex !== undefined && config.stationIndex !== null
             ? String(config.stationIndex)
             : "13";
+        node.latitude = config.latitude !== undefined && config.latitude !== null ? String(config.latitude) : "";
+        node.longitude = config.longitude !== undefined && config.longitude !== null ? String(config.longitude) : "";
         node.status({ fill: "grey", shape: "ring", text: "wird geladen" });
 
         const onUpdated = (id, info) => {
@@ -130,7 +132,9 @@ module.exports = function(RED) {
                     global: node.context().global,
                     RED,
                     config: {
-                        stationIndex: node.stationIndex
+                        stationIndex: node.stationIndex,
+                        latitude: node.latitude,
+                        longitude: node.longitude
                     }
                 };
 
