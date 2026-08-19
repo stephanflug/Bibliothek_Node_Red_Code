@@ -1,0 +1,96 @@
+<script type="text/javascript">
+(function() {
+    "use strict";
+
+    RED.nodes.registerType("ebst-remote-function", {
+        category: "function",
+        color: "#d8bfd8",
+        defaults: {
+            name: { value: "" },
+            functionId: { value: "", required: true },
+            outputs: { value: 1, validate: RED.validators.number() }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "function.svg",
+        paletteLabel: "EBST Node Red Remote Funktion",
+        label: function() {
+            return this.name || this.functionId || "EBST Node Red Remote Funktion";
+        },
+        oneditprepare: function() {
+            const node = this;
+            const select = $("#node-input-functionId");
+            const status = $("#ebst-function-load-status");
+
+            select.empty().append($("<option></option>").val("").text("Lade Funktionsliste ..."));
+            status.text("GitHub-Funktionsliste wird geladen ...");
+
+            $.getJSON("ebst-remote-function/functions")
+                .done(function(data) {
+                    select.empty();
+                    const groups = {};
+                    (data.functions || []).forEach(function(f) {
+                        const cat = f.category || "Allgemein";
+                        if (!groups[cat]) {
+                            groups[cat] = $("<optgroup></optgroup>").attr("label", cat);
+                            select.append(groups[cat]);
+                        }
+                        const label = f.version ? `${f.name}  (v${f.version})` : f.name;
+                        groups[cat].append($("<option></option>").val(f.id).text(label));
+                    });
+
+                    if (node.functionId) select.val(node.functionId);
+                    if (!select.val() && node.functionId) {
+                        select.append($("<option></option>").val(node.functionId).text(node.functionId + " (lokal konfiguriert)"));
+                        select.val(node.functionId);
+                    }
+
+                    status.text(data.cached ? "Lokale Funktionsliste (GitHub derzeit nicht erreichbar)." : "Funktionsliste aktuell.");
+                })
+                .fail(function(xhr) {
+                    select.empty();
+                    if (node.functionId) {
+                        select.append($("<option></option>").val(node.functionId).text(node.functionId + " (lokal konfiguriert)"));
+                        select.val(node.functionId);
+                    } else {
+                        select.append($("<option></option>").val("").text("Funktionsliste nicht verfügbar"));
+                    }
+                    status.text("Funktionsliste konnte nicht geladen werden. Bereits konfigurierte Funktionen laufen aus dem Cache weiter.");
+                });
+        }
+    });
+}());
+</script>
+
+<script type="text/html" data-template-name="ebst-remote-function">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="optional">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-functionId"><i class="fa fa-code"></i> Funktion</label>
+        <select id="node-input-functionId" style="width:70%;"></select>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-outputs"><i class="fa fa-random"></i> Ausgänge</label>
+        <input type="number" id="node-input-outputs" min="1" max="20" style="width:80px;">
+    </div>
+
+    <div class="form-tips" id="ebst-function-load-status">
+        Funktionsliste wird geladen ...
+    </div>
+
+    <div class="form-tips" style="margin-top:10px;">
+        Verwendete Remote-Funktionen werden automatisch aus der zentralen GitHub-Bibliothek aktualisiert.
+        Bei einem GitHub- oder Updatefehler wird die letzte gültige lokale Version weiterverwendet.
+    </div>
+</script>
+
+<script type="text/html" data-help-name="ebst-remote-function">
+    <p>Führt einen zentral auf GitHub gepflegten JavaScript-Funktionsbaustein aus.</p>
+    <p>Nur die in Flows tatsächlich verwendeten Funktionen werden geladen und regelmäßig auf Änderungen geprüft.</p>
+    <p>Änderungen an einer bestehenden Remote-Funktion benötigen keinen Deploy und keinen Node-RED-Neustart.</p>
+    <p>Die Anzahl der Ausgänge kann für Funktionen mit mehreren Rückgabepfaden konfiguriert werden.</p>
+</script>

@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "library": "EBST Node-RED Code Bibliothek",
+  "functions": {
+    "orf-innsbruck": {
+      "name": "ORF Wetter Innsbruck",
+      "category": "Wetter",
+      "version": "1.0.0",
+      "url": "https://raw.githubusercontent.com/stephanflug/Bibliothek_Node_Red_Code/main/remote/functions/wetter/orf-innsbruck.js",
+      "description": "Robuster ORF-Tirol-Parser für Wetterzustand sowie Tmin/Tmax in Innsbruck.",
+      "localFile": "remote/functions/wetter/orf-innsbruck.js"
+    }
+  }
+}

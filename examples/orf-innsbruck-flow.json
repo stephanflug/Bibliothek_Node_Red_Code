@@ -1,0 +1,113 @@
+[
+  {
+    "id": "f3c2a1b0d9e8f7a6",
+    "type": "tab",
+    "label": "ORF Innsbruck Heute - Remote",
+    "disabled": false,
+    "info": "ORF HTML abrufen und zentralen GitHub-Parser verwenden."
+  },
+  {
+    "id": "a1b2c3d4e5f6a7b8",
+    "type": "inject",
+    "z": "f3c2a1b0d9e8f7a6",
+    "name": "Trigger (manuell/zeitgesteuert)",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "00 02 * * *",
+    "once": true,
+    "onceDelay": 0.2,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 200,
+    "y": 140,
+    "wires": [
+      [
+        "b1c2d3e4f5a6b7c8"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5a6b7c8",
+    "type": "function",
+    "z": "f3c2a1b0d9e8f7a6",
+    "name": "Build Request",
+    "func": "msg.method = \"GET\";\nmsg.url = \"https://wetter.orf.at/tirol/prognose\";\nmsg.headers = {\n  \"User-Agent\": \"Node-RED weather fetch\",\n  \"Accept\": \"text/html\"\n};\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 460,
+    "y": 140,
+    "wires": [
+      [
+        "c1d2e3f4a5b6c7d8"
+      ]
+    ]
+  },
+  {
+    "id": "c1d2e3f4a5b6c7d8",
+    "type": "http request",
+    "z": "f3c2a1b0d9e8f7a6",
+    "name": "GET ORF Tirol Prognose (HTML)",
+    "method": "use",
+    "ret": "txt",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 740,
+    "y": 140,
+    "wires": [
+      [
+        "d1e2f3a4b5c6d7e8"
+      ]
+    ]
+  },
+  {
+    "id": "d1e2f3a4b5c6d7e8",
+    "type": "ebst-remote-function",
+    "z": "f3c2a1b0d9e8f7a6",
+    "name": "ORF Innsbruck zentral",
+    "functionId": "orf-innsbruck",
+    "outputs": 1,
+    "x": 1060,
+    "y": 140,
+    "wires": [
+      [
+        "e1f2a3b4c5d6e7f8"
+      ]
+    ]
+  },
+  {
+    "id": "e1f2a3b4c5d6e7f8",
+    "type": "debug",
+    "z": "f3c2a1b0d9e8f7a6",
+    "name": "Output (payload)",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1320,
+    "y": 140,
+    "wires": []
+  }
+]
