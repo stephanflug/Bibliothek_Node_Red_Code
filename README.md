@@ -32,8 +32,9 @@ Den Node in den Flow ziehen und die gewünschte Funktion auswählen.
 Aktuell verfügbar:
 
 - **ORF Wetter Innsbruck**
+- **Techweb Wetterdaten Tirol**
 
-Weitere Funktionen können später ergänzt werden.
+Bei **Techweb Wetterdaten Tirol** wird standardmäßig Station **Index 13** verwendet. Eine andere Station kann über `msg.station`, `msg.stationIndex` oder `msg.StationsnummerObject` angegeben werden. Auch Stationsname oder `station_id` können verwendet werden.
 
 ## Automatische Updates
 
