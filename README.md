@@ -2,28 +2,44 @@
 
 Diese Bibliothek stellt zentrale Funktionen für Node-RED bereit.
 
-Der Node **EBST Node Red Remote Funktion** wird als Basis installiert. Danach werden die verwendeten Funktionen automatisch von GitHub geladen und aktualisiert.
+Der Node **EBST Node Red Remote Funktion** wird einmal als Basis installiert. Danach werden Funktionen, Einstellungen und Datenpunktbeschreibungen automatisch aus GitHub geladen.
 
 ## Installation
 
-Installationspaket **V1.2.0** im Node-RED-Verzeichnis installieren und Node-RED danach einmal neu starten.
+Installationspaket **V1.3.0** im Node-RED-Verzeichnis installieren und Node-RED danach einmal neu starten.
 
 ## Verwendung
 
 Den Node **EBST Node Red Remote Funktion** in den Flow ziehen und die gewünschte Funktion auswählen.
 
-Aktuell verfügbar:
+Die benötigten Einstellungen werden passend zur gewählten Funktion automatisch angezeigt, zum Beispiel:
 
-- **ORF Wetter Innsbruck**
-- **Techweb Wetterdaten Tirol** – Wetterstation direkt im Node auswählen
-- **Sonnenstand** – Breitengrad und Längengrad direkt im Node einstellen
+- Wetterstation
+- Breitengrad / Längengrad
+- zukünftige Text-, Zahlen-, Auswahl- oder JA/NEIN-Einstellungen
 
-## Automatische Updates
+## Datenpunkte
 
-Änderungen an den zentralen Funktionen werden automatisch übernommen. Für normale Funktionsupdates ist keine erneute Installation des Basis-Pakets erforderlich.
+Im Node wird unter **Verfügbare Datenpunkte** direkt angezeigt, wie auf die Ergebnisse zugegriffen wird.
 
-Sollte GitHub vorübergehend nicht erreichbar sein, wird die zuletzt funktionierende lokale Version weiterverwendet.
+Beispiel Sonnenstand:
+
+```text
+msg.payload.azimuthDegrees
+msg.payload.altitudeDegrees
+msg.payload.times.sunrise.value
+msg.payload.times.sunset.value
+msg.payload.times.solarNoon.value
+```
+
+Auch vorhandene Global-Context-Werte werden dort beschrieben.
+
+## Automatische Erweiterungen
+
+Neue Funktionen, neue Einstellungen, neue Auswahllisten und neue Datenpunktbeschreibungen können künftig über `remote/manifest.json` ergänzt werden. Dafür ist keine erneute Installation des Basis-Pakets erforderlich.
+
+Nur wenn der eigentliche Mechanismus des Basis-Nodes geändert wird, ist eine neue Basisversion notwendig.
 
 ## Version
 
-Basis-Node: **V1.2.0**
+Basis-Node: **V1.3.0**
