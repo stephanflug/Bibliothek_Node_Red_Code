@@ -4,10 +4,12 @@ const path = require("path");
 const https = require("https");
 const { RemoteManager, DEFAULT_MANIFEST_URL, DEFAULT_INTERVAL_MS } = require("./lib/remote-manager");
 
-const TECHWEB_TIROl_URL = "https://cdn3.techweb.at/api/weather/at/data?province=tirol&format=json";
-
 function fetchJson(url, redirects = 0) {
     return new Promise((resolve, reject) => {
+        if (!/^https:\/\//i.test(url || "")) {
+            reject(new Error("Optionsquelle muss eine HTTPS-URL sein"));
+            return;
+        }
         if (redirects > 5) {
             reject(new Error("Zu viele HTTP-Weiterleitungen"));
             return;
@@ -15,7 +17,7 @@ function fetchJson(url, redirects = 0) {
 
         const req = https.get(url, {
             headers: {
-                "User-Agent": "EBST-NodeRED-Remote-Function/1.2.0",
+                "User-Agent": "EBST-NodeRED-Remote-Function/1.3.0",
                 "Accept": "application/json"
             },
             timeout: 15000
@@ -57,6 +59,59 @@ function fetchJson(url, redirects = 0) {
     });
 }
 
+function getByPath(obj, pathText) {
+    if (!pathText) return obj;
+    return String(pathText).split(".").filter(Boolean).reduce((value, key) => {
+        if (value === undefined || value === null) return undefined;
+        return value[key];
+    }, obj);
+}
+
+function formatTemplate(template, item, index) {
+    let text = String(template || "{index}");
+    text = text.replace(/\{index\}/g, String(index));
+    text = text.replace(/\{([a-zA-Z0-9_.-]+)\}/g, (_, key) => {
+        const value = getByPath(item, key);
+        return value === undefined || value === null ? "" : String(value);
+    });
+    return text
+        .replace(/\[\s*\]/g, "")
+        .replace(/\(\s*\)/g, "")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+}
+
+function listManifestFunctions(manifest) {
+    const functions = (manifest && manifest.functions) || {};
+    return Object.entries(functions).map(([id, spec]) => ({
+        id,
+        name: spec.name || id,
+        category: spec.category || "Allgemein",
+        version: spec.version || "",
+        description: spec.description || "",
+        outputs: Number.isInteger(spec.outputs) && spec.outputs > 0 ? spec.outputs : 1,
+        outputLabels: Array.isArray(spec.outputLabels) ? spec.outputLabels : [],
+        settings: Array.isArray(spec.settings) ? spec.settings : [],
+        dataPoints: Array.isArray(spec.dataPoints) ? spec.dataPoints : []
+    })).sort((a, b) => {
+        const c = a.category.localeCompare(b.category, "de");
+        return c || a.name.localeCompare(b.name, "de");
+    });
+}
+
+function parseFunctionConfig(raw) {
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+        return { ...raw };
+    }
+    if (typeof raw === "string" && raw.trim()) {
+        try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+        } catch (_) {}
+    }
+    return {};
+}
+
 module.exports = function(RED) {
     const userDir = RED.settings.userDir || process.cwd();
     const cacheDir = path.join(userDir, ".ebst-remote-functions");
@@ -76,11 +131,18 @@ module.exports = function(RED) {
 
         node.functionId = config.functionId;
         node.name = config.name;
-        node.stationIndex = config.stationIndex !== undefined && config.stationIndex !== null
-            ? String(config.stationIndex)
-            : "13";
-        node.latitude = config.latitude !== undefined && config.latitude !== null ? String(config.latitude) : "";
-        node.longitude = config.longitude !== undefined && config.longitude !== null ? String(config.longitude) : "";
+        node.functionConfig = parseFunctionConfig(config.functionConfig);
+
+        if (node.functionConfig.stationIndex === undefined && config.stationIndex !== undefined && config.stationIndex !== null && String(config.stationIndex) !== "") {
+            node.functionConfig.stationIndex = String(config.stationIndex);
+        }
+        if (node.functionConfig.latitude === undefined && config.latitude !== undefined && config.latitude !== null && String(config.latitude) !== "") {
+            node.functionConfig.latitude = config.latitude;
+        }
+        if (node.functionConfig.longitude === undefined && config.longitude !== undefined && config.longitude !== null && String(config.longitude) !== "") {
+            node.functionConfig.longitude = config.longitude;
+        }
+
         node.status({ fill: "grey", shape: "ring", text: "wird geladen" });
 
         const onUpdated = (id, info) => {
@@ -131,17 +193,11 @@ module.exports = function(RED) {
                     flow: node.context().flow,
                     global: node.context().global,
                     RED,
-                    config: {
-                        stationIndex: node.stationIndex,
-                        latitude: node.latitude,
-                        longitude: node.longitude
-                    }
+                    config: { ...node.functionConfig }
                 };
 
                 const result = await manager.execute(node.functionId, ctx);
-                if (result !== null && result !== undefined) {
-                    send(result);
-                }
+                if (result !== null && result !== undefined) send(result);
                 if (done) done();
             } catch (err) {
                 node.status({ fill: "red", shape: "ring", text: "Ausführungsfehler" });
@@ -162,14 +218,8 @@ module.exports = function(RED) {
 
     RED.nodes.registerType("ebst-remote-function", EbstRemoteFunctionNode, {
         settings: {
-            ebstRemoteFunctionManifestUrl: {
-                value: DEFAULT_MANIFEST_URL,
-                exportable: false
-            },
-            ebstRemoteFunctionUpdateIntervalMs: {
-                value: DEFAULT_INTERVAL_MS,
-                exportable: false
-            }
+            ebstRemoteFunctionManifestUrl: { value: DEFAULT_MANIFEST_URL, exportable: false },
+            ebstRemoteFunctionUpdateIntervalMs: { value: DEFAULT_INTERVAL_MS, exportable: false }
         }
     });
 
@@ -178,23 +228,65 @@ module.exports = function(RED) {
         RED.auth.needsPermission("ebst-remote-function.read"),
         async function(req, res) {
             try {
-                await manager.getManifest(true);
-                res.json({
-                    ok: true,
-                    functions: manager.listFunctions()
-                });
+                const manifest = await manager.getManifest(true);
+                res.json({ ok: true, functions: listManifestFunctions(manifest) });
             } catch (err) {
                 try {
-                    await manager.getManifest(false);
-                    res.json({
-                        ok: true,
-                        cached: true,
-                        warning: err.message,
-                        functions: manager.listFunctions()
-                    });
+                    const manifest = await manager.getManifest(false);
+                    res.json({ ok: true, cached: true, warning: err.message, functions: listManifestFunctions(manifest) });
                 } catch (_) {
                     res.status(503).json({ ok: false, error: err.message, functions: [] });
                 }
+            }
+        }
+    );
+
+    RED.httpAdmin.get(
+        "/ebst-remote-function/options/:functionId/:settingId",
+        RED.auth.needsPermission("ebst-remote-function.read"),
+        async function(req, res) {
+            try {
+                const manifest = await manager.getManifest(true);
+                const spec = manifest && manifest.functions && manifest.functions[req.params.functionId];
+                if (!spec) throw new Error("Funktion nicht gefunden");
+
+                const setting = (Array.isArray(spec.settings) ? spec.settings : [])
+                    .find(item => item && item.id === req.params.settingId);
+                if (!setting) throw new Error("Einstellung nicht gefunden");
+
+                if (Array.isArray(setting.options)) {
+                    const options = setting.options.map((item, index) => {
+                        if (item && typeof item === "object") {
+                            return {
+                                value: item.value !== undefined ? item.value : index,
+                                label: item.label !== undefined ? item.label : String(item.value !== undefined ? item.value : index)
+                            };
+                        }
+                        return { value: item, label: String(item) };
+                    });
+                    res.json({ ok: true, options });
+                    return;
+                }
+
+                const source = setting.optionsSource;
+                if (!source || !source.url) throw new Error("Keine Optionsquelle definiert");
+
+                const data = await fetchJson(source.url);
+                const list = getByPath(data, source.arrayPath);
+                if (!Array.isArray(list)) throw new Error("Optionsquelle enthält keine gültige Liste");
+
+                const options = list.map((item, index) => {
+                    let value;
+                    if (source.valueField === "$index" || !source.valueField) value = index;
+                    else value = getByPath(item, source.valueField);
+
+                    const label = formatTemplate(source.labelTemplate || "{index}", item, index);
+                    return { value, label };
+                }).filter(item => item.value !== undefined && item.value !== null);
+
+                res.json({ ok: true, options });
+            } catch (err) {
+                res.status(503).json({ ok: false, error: err.message, options: [] });
             }
         }
     );
@@ -204,17 +296,13 @@ module.exports = function(RED) {
         RED.auth.needsPermission("ebst-remote-function.read"),
         async function(req, res) {
             try {
-                const data = await fetchJson(TECHWEB_TIROl_URL);
-                if (!data || !Array.isArray(data.weather_data)) {
-                    throw new Error("weather_data fehlt in der Techweb-Antwort");
-                }
-
+                const data = await fetchJson("https://cdn3.techweb.at/api/weather/at/data?province=tirol&format=json");
+                if (!data || !Array.isArray(data.weather_data)) throw new Error("weather_data fehlt in der Techweb-Antwort");
                 const stations = data.weather_data.map((station, index) => ({
                     index,
                     location: station.location || `Station ${index}`,
                     station_id: station.station_id || null
                 }));
-
                 res.json({ ok: true, stations });
             } catch (err) {
                 res.status(503).json({ ok: false, error: err.message, stations: [] });
