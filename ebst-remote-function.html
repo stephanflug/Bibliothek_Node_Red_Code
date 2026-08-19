@@ -9,6 +9,8 @@
             name: { value: "" },
             functionId: { value: "", required: true },
             stationIndex: { value: "13" },
+            latitude: { value: "" },
+            longitude: { value: "" },
             outputs: { value: 1, validate: RED.validators.number() }
         },
         inputs: 1,
@@ -26,6 +28,7 @@
             const stationRow = $("#ebst-techweb-station-row");
             const stationSelect = $("#node-input-stationIndex");
             const stationStatus = $("#ebst-techweb-station-status");
+            const sunPositionRow = $("#ebst-sun-position-row");
             let stationsLoaded = false;
 
             function applyOutputsFromSelection() {
@@ -80,8 +83,11 @@
 
             function updateFunctionOptions() {
                 applyOutputsFromSelection();
-                const isTechweb = select.val() === "techweb-tirol-station";
+                const functionId = select.val();
+                const isTechweb = functionId === "techweb-tirol-station";
+                const isSunPosition = functionId === "sonnenstand";
                 stationRow.toggle(isTechweb);
+                sunPositionRow.toggle(isSunPosition);
                 if (isTechweb) loadTechwebStations();
             }
 
@@ -90,6 +96,7 @@
             select.empty().append($("<option></option>").val("").text("Lade Funktionsliste ..."));
             status.text("GitHub-Funktionsliste wird geladen ...");
             stationRow.hide();
+            sunPositionRow.hide();
 
             $.getJSON("ebst-remote-function/functions")
                 .done(function(data) {
@@ -164,6 +171,20 @@
         </div>
     </div>
 
+    <div id="ebst-sun-position-row" style="display:none;">
+        <div class="form-row">
+            <label for="node-input-latitude"><i class="fa fa-globe"></i> Breitengrad</label>
+            <input type="number" id="node-input-latitude" min="-90" max="90" step="0.000001" placeholder="z. B. 47.2692" style="width:70%;">
+        </div>
+        <div class="form-row">
+            <label for="node-input-longitude"><i class="fa fa-globe"></i> Längengrad</label>
+            <input type="number" id="node-input-longitude" min="-180" max="180" step="0.000001" placeholder="z. B. 11.4041" style="width:70%;">
+        </div>
+        <div class="form-tips" style="margin-top:6px;">
+            Standort für die Sonnenstandsberechnung. Die Werte werden direkt im Node gespeichert.
+        </div>
+    </div>
+
     <input type="hidden" id="node-input-outputs">
 
     <div class="form-row">
@@ -186,5 +207,5 @@
     <p>Nur die in Flows tatsächlich verwendeten Funktionen werden geladen und regelmäßig auf Änderungen geprüft.</p>
     <p>Änderungen an einer bestehenden Remote-Funktion benötigen keinen Deploy und keinen Node-RED-Neustart.</p>
     <p>Die Anzahl der Ausgänge wird automatisch aus dem GitHub-Manifest der gewählten Funktion übernommen.</p>
-    <p>Bei Funktionen mit zusätzlichen Einstellungen, wie Techweb Wetterdaten Tirol, werden die passenden Auswahlfelder automatisch eingeblendet.</p>
+    <p>Bei Funktionen mit zusätzlichen Einstellungen werden die passenden Felder automatisch eingeblendet. Bei Sonnenstand werden Breitengrad und Längengrad direkt im Node gespeichert.</p>
 </script>
