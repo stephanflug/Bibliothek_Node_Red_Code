@@ -14,6 +14,18 @@
         "Wetterdaten",
         "Condition-Varianten JSON"
       ]
+    },
+    "techweb-tirol-station": {
+      "name": "Techweb Wetterdaten Tirol",
+      "category": "Wetter",
+      "version": "1.0.0",
+      "url": "https://raw.githubusercontent.com/stephanflug/Bibliothek_Node_Red_Code/main/remote/functions/wetter/techweb-tirol-station.js",
+      "description": "Lädt aktuelle Wetterstationsdaten für Tirol von Techweb, wählt eine Station per Index, Name oder station_id und setzt die bestehenden Wetter-Globalvariablen.",
+      "localFile": "remote/functions/wetter/techweb-tirol-station.js",
+      "outputs": 1,
+      "outputLabels": [
+        "Wetterdaten"
+      ]
     }
   }
 }
