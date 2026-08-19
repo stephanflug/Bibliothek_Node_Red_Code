@@ -33,15 +33,42 @@ Bibliothek_Node_Red_Code/
 
 ## Installation des universellen Nodes
 
-Einmalig im Node-RED-User-Verzeichnis:
+Die stabile Basisversion wird **einmalig** über den GitHub-Release installiert.
+
+### Version V1.0.0
+
+Im Node-RED-User-Verzeichnis:
 
 ```bash
-npm install https://github.com/stephanflug/Bibliothek_Node_Red_Code.git
+cd ~/.node-red
+npm install https://github.com/stephanflug/Bibliothek_Node_Red_Code/releases/download/V1.0.0/node-red-contrib-ebst-remote-function-1.0.0.tgz
 ```
 
-Danach Node-RED einmal neu starten.
+Danach Node-RED einmal neu starten, zum Beispiel:
 
-Ab diesem Zeitpunkt werden Änderungen an vorhandenen Dateien unter `remote/functions/` automatisch übernommen.
+```bash
+sudo systemctl restart nodered
+```
+
+Anschließend steht in der Node-RED-Palette der Node **EBST Node Red Remote Funktion** zur Verfügung.
+
+**Wichtig:** Das Installationspaket muss für normale Änderungen an Remote-Funktionen nicht erneut installiert werden. Änderungen an vorhandenen Funktionen unter `remote/functions/` werden automatisch übernommen.
+
+## Release und Remote-Code sind getrennt
+
+```text
+GitHub Release V1.0.0
+└── node-red-contrib-ebst-remote-function-1.0.0.tgz
+    └── einmalige Basisinstallation
+
+main
+└── remote/
+    ├── manifest.json
+    └── functions/
+        └── automatische Funktionsupdates
+```
+
+Ein neuer GitHub-Release ist nur erforderlich, wenn der universelle Basis-Node selbst technisch geändert werden muss, zum Beispiel die Update-Mechanik, Cache-Mechanik oder Editor-Oberfläche.
 
 ## Neue Funktion hinzufügen
 
@@ -86,8 +113,6 @@ remote/functions/...
 ```
 
 Dafür ist **keine erneute Installation des Node-Pakets** erforderlich. Der Remote-Manager prüft die tatsächlich verwendeten Funktionen standardmäßig alle 15 Minuten, lädt Änderungen herunter und verwendet bei Fehlern die letzte gültige lokale Cache-Version.
-
-Ein neues Installationspaket ist nur nötig, wenn sich der universelle Basis-Node selbst technisch ändern muss, zum Beispiel Update-Mechanik, Cache-Mechanik oder Editor-Oberfläche.
 
 ### Wichtige Schnittstellenregel
 
