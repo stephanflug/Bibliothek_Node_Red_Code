@@ -82,15 +82,16 @@
     "id": "d1e2f3a4b5c6d7e8",
     "type": "ebst-remote-function",
     "z": "f3c2a1b0d9e8f7a6",
-    "name": "ORF Innsbruck zentral",
+    "name": "ORF Wetter Innsbruck",
     "functionId": "orf-innsbruck",
-    "outputs": 1,
+    "outputs": 2,
     "x": 1060,
     "y": 140,
     "wires": [
       [
         "e1f2a3b4c5d6e7f8"
-      ]
+      ],
+      []
     ]
   },
   {

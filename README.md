@@ -73,3 +73,14 @@ Eine neue Version wird erst aktiv, wenn sie als Node.js-Modul erfolgreich gelade
 ## Sicherheit
 
 Remote-Code besitzt dieselben Rechte wie der Node-RED-Prozess. Deshalb dürfen nur Funktionen aus einem Repository verwendet werden, dessen Schreibzugänge vertrauenswürdig abgesichert sind.
+
+
+## Änderungen in 0.1.2
+
+- Sichtbarer Node-Name: **EBST Node Red Remote Funktion**
+- ORF-Innsbruck-Parser auf die aktuelle Version mit Condition-Sammlung aktualisiert
+- ORF-Funktion besitzt jetzt **2 Ausgänge**
+- Anzahl der Ausgänge wird automatisch aus `remote/manifest.json` übernommen
+- Ausgang 1: Wetterdaten
+- Ausgang 2: JSON mit allen bisher gefundenen `condition`-Varianten
+- Bei GitHub-/Updatefehlern bleibt die letzte gültige lokale Funktion aktiv

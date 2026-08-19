@@ -11,7 +11,6 @@
             outputs: { value: 1, validate: RED.validators.number() }
         },
         inputs: 1,
-        outputs: 1,
         icon: "function.svg",
         paletteLabel: "EBST Node Red Remote Funktion",
         label: function() {
@@ -21,6 +20,19 @@
             const node = this;
             const select = $("#node-input-functionId");
             const status = $("#ebst-function-load-status");
+            const outputsInput = $("#node-input-outputs");
+            const outputsText = $("#ebst-function-outputs");
+
+            function applyOutputsFromSelection() {
+                const opt = select.find("option:selected");
+                const count = parseInt(opt.attr("data-outputs"), 10);
+                const outputs = Number.isFinite(count) && count > 0 ? count : (parseInt(outputsInput.val(), 10) || node.outputs || 1);
+                outputsInput.val(outputs);
+                node.outputs = outputs;
+                outputsText.text(outputs + (outputs === 1 ? " Ausgang" : " Ausgänge"));
+            }
+
+            select.off("change.ebst").on("change.ebst", applyOutputsFromSelection);
 
             select.empty().append($("<option></option>").val("").text("Lade Funktionsliste ..."));
             status.text("GitHub-Funktionsliste wird geladen ...");
@@ -36,25 +48,42 @@
                             select.append(groups[cat]);
                         }
                         const label = f.version ? `${f.name}  (v${f.version})` : f.name;
-                        groups[cat].append($("<option></option>").val(f.id).text(label));
+                        groups[cat].append(
+                            $("<option></option>")
+                                .val(f.id)
+                                .text(label)
+                                .attr("data-outputs", f.outputs || 1)
+                        );
                     });
 
                     if (node.functionId) select.val(node.functionId);
                     if (!select.val() && node.functionId) {
-                        select.append($("<option></option>").val(node.functionId).text(node.functionId + " (lokal konfiguriert)"));
+                        select.append(
+                            $("<option></option>")
+                                .val(node.functionId)
+                                .text(node.functionId + " (lokal konfiguriert)")
+                                .attr("data-outputs", node.outputs || 1)
+                        );
                         select.val(node.functionId);
                     }
 
+                    applyOutputsFromSelection();
                     status.text(data.cached ? "Lokale Funktionsliste (GitHub derzeit nicht erreichbar)." : "Funktionsliste aktuell.");
                 })
                 .fail(function(xhr) {
                     select.empty();
                     if (node.functionId) {
-                        select.append($("<option></option>").val(node.functionId).text(node.functionId + " (lokal konfiguriert)"));
+                        select.append(
+                            $("<option></option>")
+                                .val(node.functionId)
+                                .text(node.functionId + " (lokal konfiguriert)")
+                                .attr("data-outputs", node.outputs || 1)
+                        );
                         select.val(node.functionId);
                     } else {
                         select.append($("<option></option>").val("").text("Funktionsliste nicht verfügbar"));
                     }
+                    applyOutputsFromSelection();
                     status.text("Funktionsliste konnte nicht geladen werden. Bereits konfigurierte Funktionen laufen aus dem Cache weiter.");
                 });
         }
@@ -73,9 +102,11 @@
         <select id="node-input-functionId" style="width:70%;"></select>
     </div>
 
+    <input type="hidden" id="node-input-outputs">
+
     <div class="form-row">
-        <label for="node-input-outputs"><i class="fa fa-random"></i> Ausgänge</label>
-        <input type="number" id="node-input-outputs" min="1" max="20" style="width:80px;">
+        <label><i class="fa fa-random"></i> Ausgänge</label>
+        <span id="ebst-function-outputs">werden automatisch ermittelt</span>
     </div>
 
     <div class="form-tips" id="ebst-function-load-status">
@@ -92,5 +123,5 @@
     <p>Führt einen zentral auf GitHub gepflegten JavaScript-Funktionsbaustein aus.</p>
     <p>Nur die in Flows tatsächlich verwendeten Funktionen werden geladen und regelmäßig auf Änderungen geprüft.</p>
     <p>Änderungen an einer bestehenden Remote-Funktion benötigen keinen Deploy und keinen Node-RED-Neustart.</p>
-    <p>Die Anzahl der Ausgänge kann für Funktionen mit mehreren Rückgabepfaden konfiguriert werden.</p>
+    <p>Die Anzahl der Ausgänge wird automatisch aus dem GitHub-Manifest der gewählten Funktion übernommen.</p>
 </script>

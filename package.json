@@ -1,7 +1,7 @@
 {
   "name": "node-red-contrib-ebst-remote-function",
-  "version": "0.1.1",
-  "description": "Universeller Node-RED Node „EBST Node Red Remote Funktion“ zum automatischen Laden zentraler Funktionsbausteine aus der EBST GitHub-Bibliothek.",
+  "version": "0.1.2",
+  "description": "Universeller Node-RED Node „EBST Node Red Remote Funktion“ zum automatischen Laden zentraler Funktionsbausteine aus der EBST GitHub-Bibliothek, mit automatisch konfigurierten Ausgängen.",
   "private": true,
   "license": "UNLICENSED",
   "repository": {

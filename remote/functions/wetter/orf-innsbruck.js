@@ -4,6 +4,11 @@
  * Remote-Funktion: ORF Wetter Innsbruck
  * Quelle: zentrale EBST Node-RED Bibliothek
  *
+ * Version der Remote-Funktion: 1.1.0
+ * Ausgänge:
+ *   1: Wetterdaten
+ *   2: JSON mit allen bisher gefundenen condition-Varianten
+ *
  * Vertragsformat:
  *   module.exports = async function(ctx) { ... }
  *
@@ -21,6 +26,13 @@ module.exports = async function run(ctx) {
     // - mehrere Suchstrategien
     // - Plausibilitätsprüfung
     // - letzte gültige Werte bleiben bei Parserfehler erhalten
+    // - alle unterschiedlichen Wetterzustände sammeln
+    //
+    // AUSGANG 1:
+    //   normales Wetter-JSON
+    //
+    // AUSGANG 2:
+    //   JSON mit allen bisher gefundenen condition-Varianten
     // ============================================================
 
 
@@ -52,6 +64,7 @@ module.exports = async function run(ctx) {
 
         // Dezimale Entities
         s = s.replace(/&#(\d+);/g, (_, dec) => {
+
             const cp = parseInt(dec, 10);
 
             return Number.isFinite(cp)
@@ -61,6 +74,7 @@ module.exports = async function run(ctx) {
 
         // Hex Entities
         s = s.replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+
             const cp = parseInt(hex, 16);
 
             return Number.isFinite(cp)
@@ -200,7 +214,8 @@ module.exports = async function run(ctx) {
         .map(x => x.trim())
         .filter(Boolean);
 
-    const normalizedLines = lines.map(normalizeForSearch);
+    const normalizedLines =
+        lines.map(normalizeForSearch);
 
 
     // ============================================================
@@ -275,8 +290,11 @@ module.exports = async function run(ctx) {
             i++
         ) {
 
-            const candidate = lines[i].trim();
-            const norm = normalizedLines[i];
+            const candidate =
+                lines[i].trim();
+
+            const norm =
+                normalizedLines[i];
 
             // Keine Überschrift verwenden
             if (
@@ -335,7 +353,8 @@ module.exports = async function run(ctx) {
             i++
         ) {
 
-            tempPair = findTemperaturePair(lines[i]);
+            tempPair =
+                findTemperaturePair(lines[i]);
 
             if (tempPair) {
                 break;
@@ -363,7 +382,8 @@ module.exports = async function run(ctx) {
             i++
         ) {
 
-            tempPair = findTemperaturePair(lines[i]);
+            tempPair =
+                findTemperaturePair(lines[i]);
 
             if (tempPair) {
                 break;
@@ -373,16 +393,19 @@ module.exports = async function run(ctx) {
 
 
     // ============================================================
-    // 5. Letzter Fallback:
-    // Im gesamten Dokument nach einem Temperaturpaar suchen,
-    // aber nur wenn ein Innsbruck-Prognoseblock gefunden wurde.
+    // 5. Letzter Fallback
     // ============================================================
 
     if (!tempPair && prognosisIndex >= 0) {
 
-        for (let i = prognosisIndex + 1; i < lines.length; i++) {
+        for (
+            let i = prognosisIndex + 1;
+            i < lines.length;
+            i++
+        ) {
 
-            // Stop sobald nächste Prognose einer anderen Region beginnt
+            // Stop sobald nächste Prognose
+            // einer anderen Region beginnt
             if (
                 i > prognosisIndex + 1 &&
                 normalizedLines[i].includes("prognose") &&
@@ -391,7 +414,8 @@ module.exports = async function run(ctx) {
                 break;
             }
 
-            tempPair = findTemperaturePair(lines[i]);
+            tempPair =
+                findTemperaturePair(lines[i]);
 
             if (tempPair) {
                 break;
@@ -407,15 +431,24 @@ module.exports = async function run(ctx) {
     const errors = [];
 
     if (prognosisIndex < 0) {
-        errors.push("Innsbruck-Prognoseüberschrift nicht gefunden");
+
+        errors.push(
+            "Innsbruck-Prognoseüberschrift nicht gefunden"
+        );
     }
 
     if (!conditionToday) {
-        errors.push("Wetterzustand nicht gefunden");
+
+        errors.push(
+            "Wetterzustand nicht gefunden"
+        );
     }
 
     if (!tempPair) {
-        errors.push("Temperatur nicht gefunden");
+
+        errors.push(
+            "Temperatur nicht gefunden"
+        );
     }
 
 
@@ -425,19 +458,29 @@ module.exports = async function run(ctx) {
 
     if (errors.length > 0) {
 
-        const lastGood = global.get("innsbruck_today");
+        const lastGood =
+            global.get("innsbruck_today");
 
         const errorInfo = {
+
             ok: false,
-            errors: errors,
-            timestamp: new Date().toISOString(),
-            sample: text.slice(0, 1000)
+
+            errors:
+                errors,
+
+            timestamp:
+                new Date().toISOString(),
+
+            sample:
+                text.slice(0, 1000)
         };
+
 
         global.set(
             "wetter_parser_status",
             errorInfo
         );
+
 
         node.warn(
             "ORF Wetter Parser: " +
@@ -446,7 +489,6 @@ module.exports = async function run(ctx) {
 
 
         // --------------------------------------------------------
-        // Wichtig:
         // Alte gültige Wetterwerte NICHT überschreiben
         // --------------------------------------------------------
 
@@ -458,14 +500,27 @@ module.exports = async function run(ctx) {
         ) {
 
             msg.payload = {
-                location: "Innsbruck",
-                condition: lastGood.condition,
-                tmin_c: lastGood.tmin_c,
-                tmax_c: lastGood.tmax_c,
-                published: lastGood.published || null,
 
-                stale: true,
-                parser_ok: false,
+                location:
+                    "Innsbruck",
+
+                condition:
+                    lastGood.condition,
+
+                tmin_c:
+                    lastGood.tmin_c,
+
+                tmax_c:
+                    lastGood.tmax_c,
+
+                published:
+                    lastGood.published || null,
+
+                stale:
+                    true,
+
+                parser_ok:
+                    false,
 
                 warning:
                     "ORF-Seite konnte nicht vollständig ausgewertet werden. Letzte gültige Werte werden verwendet.",
@@ -477,12 +532,18 @@ module.exports = async function run(ctx) {
                     lastGood.updated_at || null
             };
 
-            return msg;
+
+            // Bei Parserfehler KEINE neue Condition speichern
+            return [
+                msg,
+                null
+            ];
         }
 
 
         // Noch nie gültige Werte vorhanden
         msg.payload = {
+
             error:
                 "ORF Wetter konnte nicht ausgewertet werden",
 
@@ -493,7 +554,11 @@ module.exports = async function run(ctx) {
                 text.slice(0, 1000)
         };
 
-        return msg;
+
+        return [
+            msg,
+            null
+        ];
     }
 
 
@@ -501,27 +566,40 @@ module.exports = async function run(ctx) {
     // 8. Zusätzliche Plausibilitätskontrolle
     // ============================================================
 
-    const tMin = tempPair.min;
-    const tMax = tempPair.max;
+    const tMin =
+        tempPair.min;
+
+    const tMax =
+        tempPair.max;
 
 
     // Normalerweise sollte Minimum <= Maximum sein
     if (tMin > tMax) {
 
         const errorInfo = {
+
             ok: false,
+
             errors: [
                 "Temperatur Minimum größer als Maximum"
             ],
-            tmin: tMin,
-            tmax: tMax,
-            timestamp: new Date().toISOString()
+
+            tmin:
+                tMin,
+
+            tmax:
+                tMax,
+
+            timestamp:
+                new Date().toISOString()
         };
+
 
         global.set(
             "wetter_parser_status",
             errorInfo
         );
+
 
         node.warn(
             "ORF Wetter: Temperaturwerte unplausibel: " +
@@ -544,7 +622,9 @@ module.exports = async function run(ctx) {
         );
 
     if (pub) {
-        published = pub[1];
+
+        published =
+            pub[1];
     }
 
 
@@ -554,6 +634,7 @@ module.exports = async function run(ctx) {
 
     const now =
         new Date().toISOString();
+
 
     msg.payload = {
 
@@ -587,12 +668,13 @@ module.exports = async function run(ctx) {
 
 
     // ============================================================
-    // 11. Globale Werte speichern
+    // 11. Globale Wetterwerte speichern
     // ============================================================
 
     global.set(
         "innsbruck_today",
         {
+
             condition:
                 conditionToday,
 
@@ -611,7 +693,7 @@ module.exports = async function run(ctx) {
     );
 
 
-    // Deine bisherigen Variablen
+    // Bisherige Variablen
     global.set(
         "wettervorhersage",
         conditionToday
@@ -632,8 +714,13 @@ module.exports = async function run(ctx) {
     global.set(
         "wetter_parser_status",
         {
-            ok: true,
-            timestamp: now,
+
+            ok:
+                true,
+
+            timestamp:
+                now,
+
             prognosis_heading:
                 prognosisIndex >= 0
                     ? lines[prognosisIndex]
@@ -647,5 +734,182 @@ module.exports = async function run(ctx) {
     );
 
 
-    return msg;
+    // ============================================================
+    // 12. CONDITION-VARIANTEN SAMMELN
+    //
+    // Ziel:
+    // Alle unterschiedlichen Texte sammeln,
+    // die ORF bei "condition" liefert.
+    //
+    // Keine Zähler.
+    // Keine Zeitstempel.
+    // Jeder Zustand nur einmal.
+    // ============================================================
+
+    let conditions =
+        global.get(
+            "wetter_condition_varianten"
+        );
+
+
+    // Falls noch nichts vorhanden ist
+    if (!Array.isArray(conditions)) {
+
+        conditions = [];
+    }
+
+
+    // ------------------------------------------------------------
+    // Condition bereinigen
+    // ------------------------------------------------------------
+
+    const conditionClean =
+        String(conditionToday || "")
+            .replace(/\s+/g, " ")
+            .trim();
+
+
+    // ------------------------------------------------------------
+    // Prüfen ob diese Variante schon bekannt ist
+    //
+    // Vergleich ohne Beachtung von Groß-/Kleinschreibung.
+    // ------------------------------------------------------------
+
+    const conditionExists =
+        conditions.some(
+            existing =>
+                String(existing)
+                    .toLocaleLowerCase("de-DE")
+                    .trim()
+                ===
+                conditionClean
+                    .toLocaleLowerCase("de-DE")
+                    .trim()
+        );
+
+
+    // ------------------------------------------------------------
+    // Nur neue Variante hinzufügen
+    // ------------------------------------------------------------
+
+    let newCondition = false;
+
+    if (
+        conditionClean &&
+        !conditionExists
+    ) {
+
+        conditions.push(
+            conditionClean
+        );
+
+        newCondition = true;
+
+
+        node.warn(
+            "Neue Wetter-Condition gefunden: " +
+            conditionClean
+        );
+    }
+
+
+    // ------------------------------------------------------------
+    // Alphabetisch sortieren
+    // ------------------------------------------------------------
+
+    conditions.sort(
+        (a, b) =>
+            a.localeCompare(
+                b,
+                "de-DE",
+                {
+                    sensitivity: "base"
+                }
+            )
+    );
+
+
+    // ------------------------------------------------------------
+    // Global speichern
+    // ------------------------------------------------------------
+
+    global.set(
+        "wetter_condition_varianten",
+        conditions
+    );
+
+
+    // ============================================================
+    // 13. JSON für Ausgang 2 erstellen
+    // ============================================================
+
+    const msgConditions = {
+
+        topic:
+            "wetter_conditions",
+
+        filename:
+            "wetter_conditions.json",
+
+        payload:
+            JSON.stringify(
+                {
+                    conditions:
+                        conditions
+                },
+                null,
+                2
+            )
+    };
+
+
+    // ============================================================
+    // Node-Status
+    // ============================================================
+
+    if (newCondition) {
+
+        node.status({
+
+            fill:
+                "blue",
+
+            shape:
+                "dot",
+
+            text:
+                "Neue Condition: " +
+                conditionClean
+        });
+
+    } else {
+
+        node.status({
+
+            fill:
+                "green",
+
+            shape:
+                "dot",
+
+            text:
+                conditionClean
+        });
+    }
+
+
+    // ============================================================
+    // AUSGÄNGE
+    //
+    // Ausgang 1:
+    // Wetterdaten
+    //
+    // Ausgang 2:
+    // wetter_conditions.json
+    // ============================================================
+
+    return [
+        msg,
+        msgConditions
+    ];
 };
