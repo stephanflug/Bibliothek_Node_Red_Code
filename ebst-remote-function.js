@@ -1,7 +1,61 @@
 "use strict";
 
 const path = require("path");
+const https = require("https");
 const { RemoteManager, DEFAULT_MANIFEST_URL, DEFAULT_INTERVAL_MS } = require("./lib/remote-manager");
+
+const TECHWEB_TIROl_URL = "https://cdn3.techweb.at/api/weather/at/data?province=tirol&format=json";
+
+function fetchJson(url, redirects = 0) {
+    return new Promise((resolve, reject) => {
+        if (redirects > 5) {
+            reject(new Error("Zu viele HTTP-Weiterleitungen"));
+            return;
+        }
+
+        const req = https.get(url, {
+            headers: {
+                "User-Agent": "EBST-NodeRED-Remote-Function/1.1.0",
+                "Accept": "application/json"
+            },
+            timeout: 15000
+        }, res => {
+            const status = res.statusCode || 0;
+
+            if (status >= 300 && status < 400 && res.headers.location) {
+                res.resume();
+                const next = new URL(res.headers.location, url).toString();
+                fetchJson(next, redirects + 1).then(resolve, reject);
+                return;
+            }
+
+            if (status !== 200) {
+                res.resume();
+                reject(new Error(`HTTP ${status} bei ${url}`));
+                return;
+            }
+
+            res.setEncoding("utf8");
+            let body = "";
+            res.on("data", chunk => {
+                body += chunk;
+                if (body.length > 2 * 1024 * 1024) {
+                    req.destroy(new Error("Antwort ist größer als 2 MB"));
+                }
+            });
+            res.on("end", () => {
+                try {
+                    resolve(JSON.parse(body));
+                } catch (err) {
+                    reject(new Error("Ungültiges JSON: " + err.message));
+                }
+            });
+        });
+
+        req.on("timeout", () => req.destroy(new Error("HTTP Timeout")));
+        req.on("error", reject);
+    });
+}
 
 module.exports = function(RED) {
     const userDir = RED.settings.userDir || process.cwd();
@@ -14,8 +68,6 @@ module.exports = function(RED) {
         intervalMs: Number(RED.settings.ebstRemoteFunctionUpdateIntervalMs) || DEFAULT_INTERVAL_MS
     });
 
-    // Manifest beim Start versuchen. Ein Fehler ist unkritisch, sofern später
-    // ein lokaler Cache verfügbar ist.
     manager.getManifest(true).catch(() => {});
 
     function EbstRemoteFunctionNode(config) {
@@ -24,6 +76,9 @@ module.exports = function(RED) {
 
         node.functionId = config.functionId;
         node.name = config.name;
+        node.stationIndex = config.stationIndex !== undefined && config.stationIndex !== null
+            ? String(config.stationIndex)
+            : "13";
         node.status({ fill: "grey", shape: "ring", text: "wird geladen" });
 
         const onUpdated = (id, info) => {
@@ -73,7 +128,10 @@ module.exports = function(RED) {
                     context: node.context(),
                     flow: node.context().flow,
                     global: node.context().global,
-                    RED
+                    RED,
+                    config: {
+                        stationIndex: node.stationIndex
+                    }
                 };
 
                 const result = await manager.execute(node.functionId, ctx);
@@ -122,7 +180,6 @@ module.exports = function(RED) {
                     functions: manager.listFunctions()
                 });
             } catch (err) {
-                // Bei GitHub-Ausfall trotzdem das lokale Manifest anbieten.
                 try {
                     await manager.getManifest(false);
                     res.json({
@@ -134,6 +191,29 @@ module.exports = function(RED) {
                 } catch (_) {
                     res.status(503).json({ ok: false, error: err.message, functions: [] });
                 }
+            }
+        }
+    );
+
+    RED.httpAdmin.get(
+        "/ebst-remote-function/techweb-stations",
+        RED.auth.needsPermission("ebst-remote-function.read"),
+        async function(req, res) {
+            try {
+                const data = await fetchJson(TECHWEB_TIROl_URL);
+                if (!data || !Array.isArray(data.weather_data)) {
+                    throw new Error("weather_data fehlt in der Techweb-Antwort");
+                }
+
+                const stations = data.weather_data.map((station, index) => ({
+                    index,
+                    location: station.location || `Station ${index}`,
+                    station_id: station.station_id || null
+                }));
+
+                res.json({ ok: true, stations });
+            } catch (err) {
+                res.status(503).json({ ok: false, error: err.message, stations: [] });
             }
         }
     );
