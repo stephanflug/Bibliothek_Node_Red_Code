@@ -7,12 +7,26 @@
       "category": "Wetter",
       "version": "1.2.0",
       "url": "https://raw.githubusercontent.com/stephanflug/Bibliothek_Node_Red_Code/main/remote/functions/wetter/orf-innsbruck.js",
-      "description": "ORF-Tirol-Wetterfunktion für Innsbruck. Lädt die ORF-Seite bei Bedarf selbst, wertet Wetterzustand sowie Tmin/Tmax aus und sammelt alle unterschiedlichen condition-Varianten.",
+      "description": "Lädt die ORF-Tirol-Wetterprognose für Innsbruck und liefert Wetterzustand sowie Tages-Minimum und Tages-Maximum.",
       "localFile": "remote/functions/wetter/orf-innsbruck.js",
       "outputs": 2,
       "outputLabels": [
         "Wetterdaten",
         "Condition-Varianten JSON"
+      ],
+      "settings": [],
+      "dataPoints": [
+        {"output":1,"path":"msg.payload.location","label":"Ort","type":"string","description":"Ausgewerteter Ort der Wetterprognose."},
+        {"output":1,"path":"msg.payload.condition","label":"Wetterzustand","type":"string","description":"Aktueller Prognose-Wetterzustand, z. B. wolkenlos oder bedeckt."},
+        {"output":1,"path":"msg.payload.tmin_c","label":"Temperatur Minimum","type":"number","unit":"°C","description":"Prognostizierte minimale Tagestemperatur."},
+        {"output":1,"path":"msg.payload.tmax_c","label":"Temperatur Maximum","type":"number","unit":"°C","description":"Prognostizierte maximale Tagestemperatur."},
+        {"output":1,"path":"msg.payload.published","label":"Publikationsdatum","type":"string","description":"Von ORF erkannter Veröffentlichungstag, sofern vorhanden."},
+        {"output":1,"path":"msg.payload.parser_ok","label":"Parser Status","type":"boolean","description":"true, wenn die aktuelle ORF-Seite erfolgreich ausgewertet wurde."},
+        {"output":1,"path":"msg.payload.stale","label":"Alte Werte aktiv","type":"boolean","description":"true, wenn wegen eines Parserfehlers die letzten gültigen Werte verwendet werden."},
+        {"output":2,"path":"msg.payload","label":"Condition-Varianten JSON","type":"string","description":"JSON-Text mit allen bisher gefundenen unterschiedlichen Wetterzuständen."},
+        {"scope":"global","path":"global.wettervorhersage","label":"Wettervorhersage global","type":"string","description":"Aktuell gespeicherter Wetterzustand im globalen Node-RED-Kontext."},
+        {"scope":"global","path":"global.wetter_temp","label":"Temperatur Minimum global","type":"number","unit":"°C","description":"Global gespeicherte minimale Prognosetemperatur."},
+        {"scope":"global","path":"global.wetter_temp_Max","label":"Temperatur Maximum global","type":"number","unit":"°C","description":"Global gespeicherte maximale Prognosetemperatur."}
       ]
     },
     "techweb-tirol-station": {
@@ -20,11 +34,45 @@
       "category": "Wetter",
       "version": "1.1.0",
       "url": "https://raw.githubusercontent.com/stephanflug/Bibliothek_Node_Red_Code/main/remote/functions/wetter/techweb-tirol-station.js",
-      "description": "Lädt aktuelle Wetterstationsdaten für Tirol von Techweb. Die Wetterstation wird direkt im EBST-Node ausgewählt; die bestehenden Wetter-Globalvariablen werden weiter gesetzt.",
+      "description": "Lädt aktuelle Messwerte einer auswählbaren Tiroler Wetterstation und setzt die bestehenden Wetter-Globalvariablen.",
       "localFile": "remote/functions/wetter/techweb-tirol-station.js",
       "outputs": 1,
-      "outputLabels": [
-        "Wetterdaten"
+      "outputLabels": ["Wetterdaten"],
+      "settings": [
+        {
+          "id": "stationIndex",
+          "label": "Wetterstation",
+          "type": "select",
+          "default": "13",
+          "required": true,
+          "description": "Wetterstation auswählen. Die Liste wird automatisch von der Techweb-Wetter-API geladen.",
+          "optionsSource": {
+            "url": "https://cdn3.techweb.at/api/weather/at/data?province=tirol&format=json",
+            "arrayPath": "weather_data",
+            "valueField": "$index",
+            "labelTemplate": "{index} – {location} [{station_id}]"
+          }
+        }
+      ],
+      "dataPoints": [
+        {"output":1,"path":"msg.payload.station.location","label":"Stationsname","type":"string","description":"Name der ausgewählten Wetterstation."},
+        {"output":1,"path":"msg.payload.temperature","label":"Temperatur","type":"number","unit":"°C","description":"Aktuelle Temperatur der ausgewählten Station."},
+        {"output":1,"path":"msg.payload.humidity","label":"Relative Luftfeuchte","type":"number","unit":"%","description":"Aktuelle relative Luftfeuchte."},
+        {"output":1,"path":"msg.payload.sun_w","label":"Sonnenstrahlung","type":"number","unit":"W/m²","description":"Aktuell gemessene Sonnenstrahlung bzw. der verfügbare Sonnenwert."},
+        {"output":1,"path":"msg.payload.wind_speed","label":"Windgeschwindigkeit","type":"number","description":"Aktuelle Windgeschwindigkeit der Wetterstation."},
+        {"output":1,"path":"msg.payload.wind_direction","label":"Windrichtung","description":"Aktuelle Windrichtung der Wetterstation."},
+        {"output":1,"path":"msg.payload.rain_mm","label":"Niederschlag","type":"number","unit":"mm","description":"Aktueller Niederschlagswert."},
+        {"output":1,"path":"msg.payload.snow","label":"Schnee","type":"number","description":"Schneewert der Wetterstation, sofern von der API geliefert."},
+        {"output":1,"path":"msg.payload.airpressure","label":"Luftdruck","type":"number","description":"Luftdruck bzw. Luftdrucktrend gemäß Techweb-Daten."},
+        {"output":1,"path":"msg.payload.condition","label":"Ermittelter Wetterzustand","type":"string","description":"Aus Messwerten abgeleiteter Zustand wie sonnig, bewölkt, Regen oder Schnee."},
+        {"scope":"global","path":"global.wetter_temp","label":"Temperatur global","unit":"°C","description":"Global gespeicherte aktuelle Temperatur."},
+        {"scope":"global","path":"global.wetter_humidity","label":"Feuchte global","unit":"%","description":"Global gespeicherte relative Luftfeuchte."},
+        {"scope":"global","path":"global.wetter_sun","label":"Sonne global","description":"Global gespeicherter Sonnenwert."},
+        {"scope":"global","path":"global.wetter_rain","label":"Regen global","unit":"mm","description":"Global gespeicherter Niederschlagswert."},
+        {"scope":"global","path":"global.wetter_wind_Speed","label":"Windgeschwindigkeit global","description":"Global gespeicherte Windgeschwindigkeit."},
+        {"scope":"global","path":"global.wetter_wind_direction","label":"Windrichtung global","description":"Global gespeicherte Windrichtung."},
+        {"scope":"global","path":"global.wetter_Luftdruck","label":"Luftdruck global","description":"Global gespeicherter Luftdruckwert."},
+        {"scope":"global","path":"global.wetterzustand","label":"Wetterzustand global","description":"Global gespeicherter abgeleiteter Wetterzustand."}
       ]
     },
     "sonnenstand": {
@@ -32,11 +80,27 @@
       "category": "Astronomie",
       "version": "1.0.0",
       "url": "https://raw.githubusercontent.com/stephanflug/Bibliothek_Node_Red_Code/main/remote/functions/astronomie/sonnenstand.js",
-      "description": "Berechnet Sonnenazimut, Sonnenhöhe, Sonnenaufgang, Sonnenuntergang und Sonnenmittag ohne externe Bibliothek. Breitengrad und Längengrad werden direkt im EBST-Node eingestellt.",
+      "description": "Berechnet Sonnenazimut, Sonnenhöhe, Sonnenaufgang, Sonnenuntergang und Sonnenmittag ohne externe Bibliothek.",
       "localFile": "remote/functions/astronomie/sonnenstand.js",
       "outputs": 1,
-      "outputLabels": [
-        "Sonnenstand"
+      "outputLabels": ["Sonnenstand"],
+      "settings": [
+        {"id":"latitude","label":"Breitengrad","type":"number","min":-90,"max":90,"step":0.000001,"required":true,"placeholder":"z. B. 47.2692","description":"Breitengrad des Standortes. Nord ist positiv, Süd negativ."},
+        {"id":"longitude","label":"Längengrad","type":"number","min":-180,"max":180,"step":0.000001,"required":true,"placeholder":"z. B. 11.4041","description":"Längengrad des Standortes. Ost ist positiv, West negativ."}
+      ],
+      "dataPoints": [
+        {"output":1,"path":"msg.payload.azimuthDegrees","label":"Sonnenwinkel / Azimut","type":"number","unit":"°","description":"Horizontale Richtung der Sonne: 0° = Nord, 90° = Ost, 180° = Süd, 270° = West."},
+        {"output":1,"path":"msg.payload.altitudeDegrees","label":"Sonnenhöhe","type":"number","unit":"°","description":"Winkel der Sonne über dem Horizont. Negative Werte bedeuten, dass die Sonne unter dem Horizont steht."},
+        {"output":1,"path":"msg.payload.isDay","label":"Tag / Nacht","type":"boolean","description":"true, wenn die Sonne rechnerisch über der Tag/Nacht-Grenze steht."},
+        {"output":1,"path":"msg.payload.times.sunrise.value","label":"Sonnenaufgang","type":"string","description":"Lokale Uhrzeit des Sonnenaufgangs."},
+        {"output":1,"path":"msg.payload.times.sunset.value","label":"Sonnenuntergang","type":"string","description":"Lokale Uhrzeit des Sonnenuntergangs."},
+        {"output":1,"path":"msg.payload.times.night.value","label":"Sonnenuntergang (kompatibel)","type":"string","description":"Kompatibler Pfad für bestehende Flows, entspricht dem Sonnenuntergang."},
+        {"output":1,"path":"msg.payload.times.solarNoon.value","label":"Sonnenmittag","type":"string","description":"Lokale Uhrzeit, zu der die Sonne ihren höchsten Tagesstand erreicht."},
+        {"scope":"global","path":"global.Sonnenwinkel","label":"Sonnenwinkel global","unit":"°","description":"Global gespeicherter Sonnenazimut."},
+        {"scope":"global","path":"global.Sonnenhoehe","label":"Sonnenhöhe global","unit":"°","description":"Global gespeicherte Sonnenhöhe."},
+        {"scope":"global","path":"global.Sonnenaufgang","label":"Sonnenaufgang global","description":"Global gespeicherte Sonnenaufgangszeit."},
+        {"scope":"global","path":"global.Sonnenuntergang","label":"Sonnenuntergang global","description":"Global gespeicherte Sonnenuntergangszeit."},
+        {"scope":"global","path":"global.Sonnenmittag","label":"Sonnenmittag global","description":"Global gespeicherte Sonnenmittagszeit."}
       ]
     }
   }
