@@ -4,7 +4,7 @@
     "type": "tab",
     "label": "ORF Innsbruck Heute - Remote",
     "disabled": false,
-    "info": "ORF HTML abrufen und zentralen GitHub-Parser verwenden."
+    "info": "Die Remote-Funktion lädt die ORF-Seite selbst und wertet Innsbruck aus."
   },
   {
     "id": "a1b2c3d4e5f6a7b8",
@@ -14,63 +14,15 @@
     "props": [
       {
         "p": "payload"
-      },
-      {
-        "p": "topic",
-        "vt": "str"
       }
     ],
     "repeat": "",
     "crontab": "00 02 * * *",
     "once": true,
     "onceDelay": 0.2,
-    "topic": "",
     "payload": "",
     "payloadType": "date",
-    "x": 200,
-    "y": 140,
-    "wires": [
-      [
-        "b1c2d3e4f5a6b7c8"
-      ]
-    ]
-  },
-  {
-    "id": "b1c2d3e4f5a6b7c8",
-    "type": "function",
-    "z": "f3c2a1b0d9e8f7a6",
-    "name": "Build Request",
-    "func": "msg.method = \"GET\";\nmsg.url = \"https://wetter.orf.at/tirol/prognose\";\nmsg.headers = {\n  \"User-Agent\": \"Node-RED weather fetch\",\n  \"Accept\": \"text/html\"\n};\nreturn msg;",
-    "outputs": 1,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 460,
-    "y": 140,
-    "wires": [
-      [
-        "c1d2e3f4a5b6c7d8"
-      ]
-    ]
-  },
-  {
-    "id": "c1d2e3f4a5b6c7d8",
-    "type": "http request",
-    "z": "f3c2a1b0d9e8f7a6",
-    "name": "GET ORF Tirol Prognose (HTML)",
-    "method": "use",
-    "ret": "txt",
-    "paytoqs": "ignore",
-    "url": "",
-    "tls": "",
-    "persist": false,
-    "proxy": "",
-    "insecureHTTPParser": false,
-    "authType": "",
-    "senderr": false,
-    "headers": [],
-    "x": 740,
+    "x": 220,
     "y": 140,
     "wires": [
       [
@@ -85,20 +37,22 @@
     "name": "ORF Wetter Innsbruck",
     "functionId": "orf-innsbruck",
     "outputs": 2,
-    "x": 1060,
+    "x": 550,
     "y": 140,
     "wires": [
       [
         "e1f2a3b4c5d6e7f8"
       ],
-      []
+      [
+        "f1a2b3c4d5e6f7a8"
+      ]
     ]
   },
   {
     "id": "e1f2a3b4c5d6e7f8",
     "type": "debug",
     "z": "f3c2a1b0d9e8f7a6",
-    "name": "Output (payload)",
+    "name": "Wetterdaten",
     "active": true,
     "tosidebar": true,
     "console": false,
@@ -107,8 +61,25 @@
     "targetType": "msg",
     "statusVal": "",
     "statusType": "auto",
-    "x": 1320,
-    "y": 140,
+    "x": 840,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "id": "f1a2b3c4d5e6f7a8",
+    "type": "debug",
+    "z": "f3c2a1b0d9e8f7a6",
+    "name": "Condition-Varianten",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 870,
+    "y": 180,
     "wires": []
   }
 ]
