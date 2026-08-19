@@ -5,9 +5,9 @@
     "orf-innsbruck": {
       "name": "ORF Wetter Innsbruck",
       "category": "Wetter",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "url": "https://raw.githubusercontent.com/stephanflug/Bibliothek_Node_Red_Code/main/remote/functions/wetter/orf-innsbruck.js",
-      "description": "Robuster ORF-Tirol-Parser für Innsbruck mit Wetterzustand, Tmin/Tmax sowie Sammlung aller unterschiedlichen condition-Varianten.",
+      "description": "ORF-Tirol-Wetterfunktion für Innsbruck. Lädt die ORF-Seite bei Bedarf selbst, wertet Wetterzustand sowie Tmin/Tmax aus und sammelt alle unterschiedlichen condition-Varianten.",
       "localFile": "remote/functions/wetter/orf-innsbruck.js",
       "outputs": 2,
       "outputLabels": [
