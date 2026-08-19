@@ -8,6 +8,7 @@
         defaults: {
             name: { value: "" },
             functionId: { value: "", required: true },
+            stationIndex: { value: "13" },
             outputs: { value: 1, validate: RED.validators.number() }
         },
         inputs: 1,
@@ -22,20 +23,73 @@
             const status = $("#ebst-function-load-status");
             const outputsInput = $("#node-input-outputs");
             const outputsText = $("#ebst-function-outputs");
+            const stationRow = $("#ebst-techweb-station-row");
+            const stationSelect = $("#node-input-stationIndex");
+            const stationStatus = $("#ebst-techweb-station-status");
+            let stationsLoaded = false;
 
             function applyOutputsFromSelection() {
                 const opt = select.find("option:selected");
                 const count = parseInt(opt.attr("data-outputs"), 10);
-                const outputs = Number.isFinite(count) && count > 0 ? count : (parseInt(outputsInput.val(), 10) || node.outputs || 1);
+                const outputs = Number.isFinite(count) && count > 0
+                    ? count
+                    : (parseInt(outputsInput.val(), 10) || node.outputs || 1);
+
                 outputsInput.val(outputs);
                 node.outputs = outputs;
                 outputsText.text(outputs + (outputs === 1 ? " Ausgang" : " Ausgänge"));
             }
 
-            select.off("change.ebst").on("change.ebst", applyOutputsFromSelection);
+            function loadTechwebStations() {
+                if (stationsLoaded) return;
+                stationsLoaded = true;
+
+                const current = String(node.stationIndex !== undefined ? node.stationIndex : "13");
+                stationSelect.empty().append(
+                    $("<option></option>").val(current).text("Stationsliste wird geladen ...")
+                );
+                stationStatus.text("Wetterstationen werden geladen ...");
+
+                $.getJSON("ebst-remote-function/techweb-stations")
+                    .done(function(data) {
+                        stationSelect.empty();
+                        (data.stations || []).forEach(function(station) {
+                            const label = station.index + " – " + station.location +
+                                (station.station_id ? " [" + station.station_id + "]" : "");
+                            stationSelect.append(
+                                $("<option></option>").val(String(station.index)).text(label)
+                            );
+                        });
+
+                        if (stationSelect.find('option[value="' + current.replace(/"/g, '\\"') + '"]').length) {
+                            stationSelect.val(current);
+                        } else if (stationSelect.find('option[value="13"]').length) {
+                            stationSelect.val("13");
+                        }
+
+                        stationStatus.text((data.stations || []).length + " Wetterstationen verfügbar.");
+                    })
+                    .fail(function() {
+                        stationSelect.empty().append(
+                            $("<option></option>").val(current).text(current + " – aktuell konfigurierte Stationsnummer")
+                        );
+                        stationSelect.val(current);
+                        stationStatus.text("Stationsliste konnte nicht geladen werden. Die gespeicherte Stationsnummer bleibt erhalten.");
+                    });
+            }
+
+            function updateFunctionOptions() {
+                applyOutputsFromSelection();
+                const isTechweb = select.val() === "techweb-tirol-station";
+                stationRow.toggle(isTechweb);
+                if (isTechweb) loadTechwebStations();
+            }
+
+            select.off("change.ebst").on("change.ebst", updateFunctionOptions);
 
             select.empty().append($("<option></option>").val("").text("Lade Funktionsliste ..."));
             status.text("GitHub-Funktionsliste wird geladen ...");
+            stationRow.hide();
 
             $.getJSON("ebst-remote-function/functions")
                 .done(function(data) {
@@ -67,10 +121,10 @@
                         select.val(node.functionId);
                     }
 
-                    applyOutputsFromSelection();
+                    updateFunctionOptions();
                     status.text(data.cached ? "Lokale Funktionsliste (GitHub derzeit nicht erreichbar)." : "Funktionsliste aktuell.");
                 })
-                .fail(function(xhr) {
+                .fail(function() {
                     select.empty();
                     if (node.functionId) {
                         select.append(
@@ -83,7 +137,7 @@
                     } else {
                         select.append($("<option></option>").val("").text("Funktionsliste nicht verfügbar"));
                     }
-                    applyOutputsFromSelection();
+                    updateFunctionOptions();
                     status.text("Funktionsliste konnte nicht geladen werden. Bereits konfigurierte Funktionen laufen aus dem Cache weiter.");
                 });
         }
@@ -100,6 +154,14 @@
     <div class="form-row">
         <label for="node-input-functionId"><i class="fa fa-code"></i> Funktion</label>
         <select id="node-input-functionId" style="width:70%;"></select>
+    </div>
+
+    <div class="form-row" id="ebst-techweb-station-row" style="display:none;">
+        <label for="node-input-stationIndex"><i class="fa fa-map-marker"></i> Wetterstation</label>
+        <select id="node-input-stationIndex" style="width:70%;"></select>
+        <div class="form-tips" id="ebst-techweb-station-status" style="margin-top:6px;">
+            Wetterstationen werden geladen ...
+        </div>
     </div>
 
     <input type="hidden" id="node-input-outputs">
@@ -124,4 +186,5 @@
     <p>Nur die in Flows tatsächlich verwendeten Funktionen werden geladen und regelmäßig auf Änderungen geprüft.</p>
     <p>Änderungen an einer bestehenden Remote-Funktion benötigen keinen Deploy und keinen Node-RED-Neustart.</p>
     <p>Die Anzahl der Ausgänge wird automatisch aus dem GitHub-Manifest der gewählten Funktion übernommen.</p>
+    <p>Bei Funktionen mit zusätzlichen Einstellungen, wie Techweb Wetterdaten Tirol, werden die passenden Auswahlfelder automatisch eingeblendet.</p>
 </script>
