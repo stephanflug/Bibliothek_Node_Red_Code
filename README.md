@@ -74,13 +74,21 @@ Eine neue Version wird erst aktiv, wenn sie als Node.js-Modul erfolgreich gelade
 
 Remote-Code besitzt dieselben Rechte wie der Node-RED-Prozess. Deshalb dürfen nur Funktionen aus einem Repository verwendet werden, dessen Schreibzugänge vertrauenswürdig abgesichert sind.
 
+## Stabile Basisversion 1.0.0
 
-## Änderungen in 0.1.2
+**Diese Version wird pro Node-RED-Installation nur einmal installiert.**
 
-- Sichtbarer Node-Name: **EBST Node Red Remote Funktion**
-- ORF-Innsbruck-Parser auf die aktuelle Version mit Condition-Sammlung aktualisiert
-- ORF-Funktion besitzt jetzt **2 Ausgänge**
-- Anzahl der Ausgänge wird automatisch aus `remote/manifest.json` übernommen
-- Ausgang 1: Wetterdaten
-- Ausgang 2: JSON mit allen bisher gefundenen `condition`-Varianten
-- Bei GitHub-/Updatefehlern bleibt die letzte gültige lokale Funktion aktiv
+Danach werden normale Funktionsänderungen ausschließlich über diese Bereiche verteilt:
+
+```text
+remote/manifest.json
+remote/functions/...
+```
+
+Dafür ist **keine erneute Installation des Node-Pakets** erforderlich. Der Remote-Manager prüft die tatsächlich verwendeten Funktionen standardmäßig alle 15 Minuten, lädt Änderungen herunter und verwendet bei Fehlern die letzte gültige lokale Cache-Version.
+
+Ein neues Installationspaket ist nur nötig, wenn sich der universelle Basis-Node selbst technisch ändern muss, zum Beispiel Update-Mechanik, Cache-Mechanik oder Editor-Oberfläche.
+
+### Wichtige Schnittstellenregel
+
+Bei einer bereits eingesetzten Remote-Funktion sollten Anzahl und Bedeutung der Ausgänge stabil bleiben. Reine Codeänderungen werden automatisch übernommen. Eine spätere Änderung der Ausgangszahl verändert jedoch die Flow-Verdrahtung und erfordert deshalb eine bewusste Anpassung/Deploy des betroffenen Flows.
