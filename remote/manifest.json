@@ -26,6 +26,18 @@
       "outputLabels": [
         "Wetterdaten"
       ]
+    },
+    "sonnenstand": {
+      "name": "Sonnenstand",
+      "category": "Astronomie",
+      "version": "1.0.0",
+      "url": "https://raw.githubusercontent.com/stephanflug/Bibliothek_Node_Red_Code/main/remote/functions/astronomie/sonnenstand.js",
+      "description": "Berechnet Sonnenazimut, Sonnenhöhe, Sonnenaufgang, Sonnenuntergang und Sonnenmittag ausschließlich mit JavaScript ohne externe Bibliothek. Koordinaten kommen aus msg.latitude/msg.longitude oder global.sun_latitude/global.sun_longitude.",
+      "localFile": "remote/functions/astronomie/sonnenstand.js",
+      "outputs": 1,
+      "outputLabels": [
+        "Sonnenstand"
+      ]
     }
   }
 }
