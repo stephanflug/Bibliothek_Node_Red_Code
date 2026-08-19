@@ -2,12 +2,25 @@
 (function() {
     "use strict";
 
+    function parseJsonObject(value) {
+        if (value && typeof value === "object" && !Array.isArray(value)) return Object.assign({}, value);
+        if (typeof value === "string" && value.trim()) {
+            try {
+                const parsed = JSON.parse(value);
+                if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+            } catch (_) {}
+        }
+        return {};
+    }
+
     RED.nodes.registerType("ebst-remote-function", {
         category: "function",
         color: "#d8bfd8",
         defaults: {
             name: { value: "" },
             functionId: { value: "", required: true },
+            functionConfig: { value: "{}" },
+            // Legacy-Felder für automatische Migration von V1.0-V1.2
             stationIndex: { value: "13" },
             latitude: { value: "" },
             longitude: { value: "" },
@@ -19,134 +32,325 @@
         label: function() {
             return this.name || this.functionId || "EBST Node Red Remote Funktion";
         },
+
         oneditprepare: function() {
             const node = this;
-            const select = $("#node-input-functionId");
-            const status = $("#ebst-function-load-status");
+            const functionSelect = $("#node-input-functionId");
+            const configInput = $("#node-input-functionConfig");
             const outputsInput = $("#node-input-outputs");
             const outputsText = $("#ebst-function-outputs");
-            const stationRow = $("#ebst-techweb-station-row");
-            const stationSelect = $("#node-input-stationIndex");
-            const stationStatus = $("#ebst-techweb-station-status");
-            const sunPositionRow = $("#ebst-sun-position-row");
-            let stationsLoaded = false;
+            const status = $("#ebst-function-load-status");
+            const functionDescription = $("#ebst-function-description");
+            const settingsContainer = $("#ebst-dynamic-settings");
+            const dataPointsContainer = $("#ebst-data-points");
 
-            function applyOutputsFromSelection() {
-                const opt = select.find("option:selected");
-                const count = parseInt(opt.attr("data-outputs"), 10);
-                const outputs = Number.isFinite(count) && count > 0
-                    ? count
+            const catalog = {};
+            const configs = {};
+            let renderedFunctionId = null;
+
+            const initialConfig = parseJsonObject(node.functionConfig);
+            if (node.functionId) configs[node.functionId] = initialConfig;
+
+            // V1.0-V1.2 automatisch in die neue generische Konfiguration migrieren.
+            if (node.functionId === "techweb-tirol-station") {
+                configs[node.functionId] = configs[node.functionId] || {};
+                if (configs[node.functionId].stationIndex === undefined && node.stationIndex !== undefined) {
+                    configs[node.functionId].stationIndex = String(node.stationIndex);
+                }
+            }
+            if (node.functionId === "sonnenstand") {
+                configs[node.functionId] = configs[node.functionId] || {};
+                if (configs[node.functionId].latitude === undefined && node.latitude !== undefined && String(node.latitude) !== "") {
+                    configs[node.functionId].latitude = node.latitude;
+                }
+                if (configs[node.functionId].longitude === undefined && node.longitude !== undefined && String(node.longitude) !== "") {
+                    configs[node.functionId].longitude = node.longitude;
+                }
+            }
+
+            function escapeHtml(value) {
+                return $("<div>").text(value === undefined || value === null ? "" : String(value)).html();
+            }
+
+            function settingElementId(id) {
+                return "ebst-setting-" + String(id).replace(/[^a-zA-Z0-9_-]/g, "_");
+            }
+
+            function currentSpec() {
+                return catalog[functionSelect.val()] || null;
+            }
+
+            function collectRenderedSettings() {
+                if (!renderedFunctionId) return;
+                const spec = catalog[renderedFunctionId];
+                if (!spec) return;
+                const cfg = {};
+
+                (spec.settings || []).forEach(function(setting) {
+                    const element = $("#" + settingElementId(setting.id));
+                    if (!element.length) return;
+
+                    let value;
+                    if (setting.type === "boolean") {
+                        value = element.prop("checked");
+                    } else {
+                        value = element.val();
+                        if (setting.type === "number" && value !== "" && value !== null) {
+                            const n = Number(value);
+                            value = Number.isFinite(n) ? n : value;
+                        }
+                    }
+                    cfg[setting.id] = value;
+                });
+                configs[renderedFunctionId] = cfg;
+            }
+
+            function applyOutputs(spec) {
+                const outputs = spec && Number(spec.outputs) > 0
+                    ? Number(spec.outputs)
                     : (parseInt(outputsInput.val(), 10) || node.outputs || 1);
-
                 outputsInput.val(outputs);
                 node.outputs = outputs;
                 outputsText.text(outputs + (outputs === 1 ? " Ausgang" : " Ausgänge"));
             }
 
-            function loadTechwebStations() {
-                if (stationsLoaded) return;
-                stationsLoaded = true;
-
-                const current = String(node.stationIndex !== undefined ? node.stationIndex : "13");
-                stationSelect.empty().append(
-                    $("<option></option>").val(current).text("Stationsliste wird geladen ...")
+            function addSettingDescription(row, setting) {
+                if (!setting.description) return;
+                row.append(
+                    $("<div></div>")
+                        .addClass("form-tips")
+                        .css({ marginTop: "5px", marginLeft: "105px" })
+                        .text(setting.description)
                 );
-                stationStatus.text("Wetterstationen werden geladen ...");
+            }
 
-                $.getJSON("ebst-remote-function/techweb-stations")
-                    .done(function(data) {
-                        stationSelect.empty();
-                        (data.stations || []).forEach(function(station) {
-                            const label = station.index + " – " + station.location +
-                                (station.station_id ? " [" + station.station_id + "]" : "");
-                            stationSelect.append(
-                                $("<option></option>").val(String(station.index)).text(label)
-                            );
-                        });
-
-                        if (stationSelect.find('option[value="' + current.replace(/"/g, '\\"') + '"]').length) {
-                            stationSelect.val(current);
-                        } else if (stationSelect.find('option[value="13"]').length) {
-                            stationSelect.val("13");
-                        }
-
-                        stationStatus.text((data.stations || []).length + " Wetterstationen verfügbar.");
-                    })
-                    .fail(function() {
-                        stationSelect.empty().append(
-                            $("<option></option>").val(current).text(current + " – aktuell konfigurierte Stationsnummer")
-                        );
-                        stationSelect.val(current);
-                        stationStatus.text("Stationsliste konnte nicht geladen werden. Die gespeicherte Stationsnummer bleibt erhalten.");
+            function populateSelect(element, setting, currentValue) {
+                function setOptions(options) {
+                    element.empty();
+                    (options || []).forEach(function(option) {
+                        const value = option && typeof option === "object" ? option.value : option;
+                        const label = option && typeof option === "object" ? option.label : option;
+                        element.append($("<option></option>").val(String(value)).text(String(label)));
                     });
+
+                    if (currentValue !== undefined && currentValue !== null && String(currentValue) !== "") {
+                        const value = String(currentValue);
+                        if (!element.find("option").filter(function() { return $(this).val() === value; }).length) {
+                            element.prepend($("<option></option>").val(value).text(value + " (gespeichert)"));
+                        }
+                        element.val(value);
+                    } else if (setting.default !== undefined) {
+                        element.val(String(setting.default));
+                    }
+                }
+
+                if (Array.isArray(setting.options)) {
+                    setOptions(setting.options);
+                    return;
+                }
+
+                if (setting.optionsSource) {
+                    element.empty().append($("<option></option>").val("").text("Auswahlliste wird geladen ..."));
+                    const url = "ebst-remote-function/options/" + encodeURIComponent(renderedFunctionId) + "/" + encodeURIComponent(setting.id);
+                    $.getJSON(url)
+                        .done(function(data) {
+                            setOptions(data.options || []);
+                        })
+                        .fail(function() {
+                            const fallback = currentValue !== undefined && currentValue !== null ? String(currentValue) : "";
+                            element.empty().append(
+                                $("<option></option>").val(fallback).text(fallback ? fallback + " (gespeichert)" : "Auswahlliste nicht verfügbar")
+                            );
+                            element.val(fallback);
+                        });
+                    return;
+                }
+
+                setOptions([]);
             }
 
-            function updateFunctionOptions() {
-                applyOutputsFromSelection();
-                const functionId = select.val();
-                const isTechweb = functionId === "techweb-tirol-station";
-                const isSunPosition = functionId === "sonnenstand";
-                stationRow.toggle(isTechweb);
-                sunPositionRow.toggle(isSunPosition);
-                if (isTechweb) loadTechwebStations();
+            function renderSettings(spec) {
+                settingsContainer.empty();
+                if (!spec || !Array.isArray(spec.settings) || spec.settings.length === 0) {
+                    settingsContainer.append(
+                        $("<div></div>").addClass("form-tips").text("Für diese Funktion sind keine zusätzlichen Einstellungen erforderlich.")
+                    );
+                    return;
+                }
+
+                const cfg = configs[renderedFunctionId] || {};
+
+                spec.settings.forEach(function(setting) {
+                    if (!setting || !setting.id) return;
+                    const row = $("<div></div>").addClass("form-row");
+                    const id = settingElementId(setting.id);
+                    const label = $("<label></label>").attr("for", id).text(setting.label || setting.id);
+                    if (setting.required) label.append(" *");
+                    row.append(label);
+
+                    const currentValue = cfg[setting.id] !== undefined ? cfg[setting.id] : setting.default;
+                    let element;
+
+                    if (setting.type === "select") {
+                        element = $("<select></select>").attr("id", id).css("width", "70%");
+                        row.append(element);
+                        populateSelect(element, setting, currentValue);
+                    } else if (setting.type === "boolean") {
+                        element = $("<input>").attr({ type: "checkbox", id: id }).css({ width: "auto", marginTop: "8px" });
+                        element.prop("checked", Boolean(currentValue));
+                        row.append(element);
+                    } else {
+                        const inputType = setting.type === "number" ? "number" : "text";
+                        element = $("<input>").attr({ type: inputType, id: id }).css("width", "70%");
+                        if (setting.placeholder) element.attr("placeholder", setting.placeholder);
+                        if (setting.required) element.attr("required", "required");
+                        if (setting.type === "number") {
+                            if (setting.min !== undefined) element.attr("min", setting.min);
+                            if (setting.max !== undefined) element.attr("max", setting.max);
+                            if (setting.step !== undefined) element.attr("step", setting.step);
+                        }
+                        if (currentValue !== undefined && currentValue !== null) element.val(currentValue);
+                        row.append(element);
+                    }
+
+                    element.attr("data-setting-id", setting.id);
+                    element.attr("data-setting-type", setting.type || "text");
+                    addSettingDescription(row, setting);
+                    settingsContainer.append(row);
+                });
             }
 
-            select.off("change.ebst").on("change.ebst", updateFunctionOptions);
+            function renderDataPoints(spec) {
+                dataPointsContainer.empty();
+                const points = spec && Array.isArray(spec.dataPoints) ? spec.dataPoints : [];
+                if (!points.length) {
+                    dataPointsContainer.append
+                        (
+                        $("<div></div>").addClass("form-tips").text("Für diese Funktion ist noch keine Datenpunktbeschreibung hinterlegt.")
+                    );
+                    return;
+                }
 
-            select.empty().append($("<option></option>").val("").text("Lade Funktionsliste ..."));
+                points.forEach(function(point) {
+                    const card = $("<div></div>").css({border:"1px solid #ddd",borderRadius:"4px",padding:"8px 10px",marginBottom:"7px",background:"#fafafa"});
+                    const title = $("<div></div>").css("font-weight","600").text(point.label || point.path || "Datenpunkt");
+                    if (point.unit) title.append(" [" + point.unit + "]");
+                    card.append(title);
+                    const sourceText = point.scope === "global" ? "Global Context" : "Ausgang " + (point.output || 1);
+                    card.append($("<div></div>").css({fontSize:"11px",color:"#666",marginTop:"2px"}).text(sourceText));
+                    card.append($("<code></code>").css({display:"inline-block",marginTop:"4px",userSelect:"text"}).text(point.path || ""));
+                    if (point.description) card.append($("<div></div>").css({marginTop:"4px",fontSize:"12px"}).text(point.description));
+                    dataPointsContainer.append(card);
+                });
+            }
+
+            function renderSelectedFunction() {
+                collectRenderedSettings();
+                renderedFunctionId = functionSelect.val();
+                const spec = currentSpec();
+                configs[renderedFunctionId] = configs[renderedFunctionId] || {};
+                applyOutputs(spec);
+                functionDescription.text(spec && spec.description ? spec.description : "");
+                renderSettings(spec);
+                renderDataPoints(spec);
+            }
+
+            functionSelect.off("change.ebst").on("change.ebst", renderSelectedFunction);
+            functionSelect.empty().append($("<option></option>").val("").text("Lade Funktionsliste ..."));
             status.text("GitHub-Funktionsliste wird geladen ...");
-            stationRow.hide();
-            sunPositionRow.hide();
+            settingsContainer.empty();
+            dataPointsContainer.empty();
 
             $.getJSON("ebst-remote-function/functions")
                 .done(function(data) {
-                    select.empty();
+                    functionSelect.empty();
                     const groups = {};
                     (data.functions || []).forEach(function(f) {
+                        catalog[f.id] = f;
                         const cat = f.category || "Allgemein";
                         if (!groups[cat]) {
                             groups[cat] = $("<optgroup></optgroup>").attr("label", cat);
-                            select.append(groups[cat]);
+                            functionSelect.append(groups[cat]);
                         }
-                        const label = f.version ? `${f.name}  (v${f.version})` : f.name;
-                        groups[cat].append(
-                            $("<option></option>")
-                                .val(f.id)
-                                .text(label)
-                                .attr("data-outputs", f.outputs || 1)
-                        );
+                        const label = f.version ? f.name + "  (v" + f.version + ")" : f.name;
+                        groups[cat].append($("<option></option>").val(f.id).text(label));
                     });
 
-                    if (node.functionId) select.val(node.functionId);
-                    if (!select.val() && node.functionId) {
-                        select.append(
-                            $("<option></option>")
-                                .val(node.functionId)
-                                .text(node.functionId + " (lokal konfiguriert)")
-                                .attr("data-outputs", node.outputs || 1)
-                        );
-                        select.val(node.functionId);
+                    if (node.functionId) functionSelect.val(node.functionId);
+                    if (!functionSelect.val() && node.functionId) {
+                        catalog[node.functionId] = {
+                            id: node.functionId,
+                            name: node.functionId,
+                            outputs: node.outputs || 1,
+                            settings: [],
+                            dataPoints: []
+                        };
+                        functionSelect.append($("<option></option>").val(node.functionId).text(node.functionId + " (lokal konfiguriert)"));
+                        functionSelect.val(node.functionId);
                     }
 
-                    updateFunctionOptions();
+                    renderSelectedFunction();
                     status.text(data.cached ? "Lokale Funktionsliste (GitHub derzeit nicht erreichbar)." : "Funktionsliste aktuell.");
                 })
                 .fail(function() {
-                    select.empty();
+                    functionSelect.empty();
                     if (node.functionId) {
-                        select.append(
-                            $("<option></option>")
-                                .val(node.functionId)
-                                .text(node.functionId + " (lokal konfiguriert)")
-                                .attr("data-outputs", node.outputs || 1)
-                        );
-                        select.val(node.functionId);
+                        catalog[node.functionId] = {
+                            id: node.functionId,
+                            name: node.functionId,
+                            outputs: node.outputs || 1,
+                            settings: [],
+                            dataPoints: []
+                        };
+                        functionSelect.append($("<option></option>").val(node.functionId).text(node.functionId + " (lokal konfiguriert)"));
+                        functionSelect.val(node.functionId);
                     } else {
-                        select.append($("<option></option>").val("").text("Funktionsliste nicht verfügbar"));
+                        functionSelect.append($("<option></option>").val("").text("Funktionsliste nicht verfügbar"));
                     }
-                    updateFunctionOptions();
+                    renderSelectedFunction();
                     status.text("Funktionsliste konnte nicht geladen werden. Bereits konfigurierte Funktionen laufen aus dem Cache weiter.");
                 });
+        },
+
+        oneditsave: function() {
+            const functionId = $("#node-input-functionId").val();
+            const config = {};
+
+            $("#ebst-dynamic-settings").find("[id^='ebst-setting-']").each(function() {
+                const element = $(this);
+                const settingId = element.attr("data-setting-id");
+                if (!settingId) return;
+                const settingType = element.attr("data-setting-type") || "text";
+                let value;
+                if (settingType === "boolean") value = element.prop("checked");
+                else {
+                    value = element.val();
+                    if (settingType === "number" && value !== "") {
+                        const n = Number(value);
+                        if (Number.isFinite(n)) value = n;
+                    }
+                }
+                config[settingId] = value;
+            });
+
+            this.functionConfig = JSON.stringify(config);
+            $("#node-input-functionConfig").val(this.functionConfig);
+
+            // Legacy-Felder synchron halten, damit ein Downgrade vorhandene Einstellungen nicht verliert.
+            if (functionId === "techweb-tirol-station" && config.stationIndex !== undefined) {
+                this.stationIndex = String(config.stationIndex);
+                $("#node-input-stationIndex").val(this.stationIndex);
+            }
+            if (functionId === "sonnenstand") {
+                if (config.latitude !== undefined) {
+                    this.latitude = String(config.latitude);
+                    $("#node-input-latitude").val(this.latitude);
+                }
+                if (config.longitude !== undefined) {
+                    this.longitude = String(config.longitude);
+                    $("#node-input-longitude").val(this.longitude);
+                }
+            }
         }
     });
 }());
@@ -163,49 +367,42 @@
         <select id="node-input-functionId" style="width:70%;"></select>
     </div>
 
-    <div class="form-row" id="ebst-techweb-station-row" style="display:none;">
-        <label for="node-input-stationIndex"><i class="fa fa-map-marker"></i> Wetterstation</label>
-        <select id="node-input-stationIndex" style="width:70%;"></select>
-        <div class="form-tips" id="ebst-techweb-station-status" style="margin-top:6px;">
-            Wetterstationen werden geladen ...
-        </div>
-    </div>
+    <div id="ebst-function-description" class="form-tips" style="margin-bottom:10px;"></div>
 
-    <div id="ebst-sun-position-row" style="display:none;">
-        <div class="form-row">
-            <label for="node-input-latitude"><i class="fa fa-globe"></i> Breitengrad</label>
-            <input type="number" id="node-input-latitude" min="-90" max="90" step="0.000001" placeholder="z. B. 47.2692" style="width:70%;">
-        </div>
-        <div class="form-row">
-            <label for="node-input-longitude"><i class="fa fa-globe"></i> Längengrad</label>
-            <input type="number" id="node-input-longitude" min="-180" max="180" step="0.000001" placeholder="z. B. 11.4041" style="width:70%;">
-        </div>
-        <div class="form-tips" style="margin-top:6px;">
-            Standort für die Sonnenstandsberechnung. Die Werte werden direkt im Node gespeichert.
-        </div>
-    </div>
+    <div style="font-weight:600; margin:12px 0 8px 0;">Einstellungen</div>
+    <div id="ebst-dynamic-settings"></div>
 
+    <input type="hidden" id="node-input-functionConfig">
+    <input type="hidden" id="node-input-stationIndex">
+    <input type="hidden" id="node-input-latitude">
+    <input type="hidden" id="node-input-longitude">
     <input type="hidden" id="node-input-outputs">
 
-    <div class="form-row">
+    <div class="form-row" style="margin-top:10px;">
         <label><i class="fa fa-random"></i> Ausgänge</label>
         <span id="ebst-function-outputs">werden automatisch ermittelt</span>
     </div>
 
-    <div class="form-tips" id="ebst-function-load-status">
+    <div style="font-weight:600; margin:16px 0 8px 0;">Verfügbare Datenpunkte</div>
+    <div class="form-tips" style="margin-bottom:8px;">
+        Der angezeigte Pfad kann direkt in Change-, Function-, Switch-, Debug- oder Dashboard-Nodes verwendet werden.
+    </div>
+    <div id="ebst-data-points" style="max-height:300px; overflow-y:auto; padding-right:4px;"></div>
+
+    <div class="form-tips" id="ebst-function-load-status" style="margin-top:12px;">
         Funktionsliste wird geladen ...
     </div>
 
     <div class="form-tips" style="margin-top:10px;">
-        Verwendete Remote-Funktionen werden automatisch aus der zentralen GitHub-Bibliothek aktualisiert.
+        Funktionen, Einstellungen und Datenpunktbeschreibungen werden aus der zentralen GitHub-Bibliothek geladen.
         Bei einem GitHub- oder Updatefehler wird die letzte gültige lokale Version weiterverwendet.
     </div>
 </script>
 
 <script type="text/html" data-help-name="ebst-remote-function">
     <p>Führt einen zentral auf GitHub gepflegten JavaScript-Funktionsbaustein aus.</p>
-    <p>Nur die in Flows tatsächlich verwendeten Funktionen werden geladen und regelmäßig auf Änderungen geprüft.</p>
-    <p>Änderungen an einer bestehenden Remote-Funktion benötigen keinen Deploy und keinen Node-RED-Neustart.</p>
-    <p>Die Anzahl der Ausgänge wird automatisch aus dem GitHub-Manifest der gewählten Funktion übernommen.</p>
-    <p>Bei Funktionen mit zusätzlichen Einstellungen werden die passenden Felder automatisch eingeblendet. Bei Sonnenstand werden Breitengrad und Längengrad direkt im Node gespeichert.</p>
+    <p>Die Funktionsliste, funktionsabhängige Einstellungen und die Datenpunktbeschreibung werden dynamisch aus dem Manifest geladen.</p>
+    <p>Dadurch können neue Funktionen und neue Konfigurationsfelder ergänzt werden, ohne das Basis-Paket erneut zu installieren.</p>
+    <p>Unter <b>Verfügbare Datenpunkte</b> wird direkt angezeigt, über welchen <code>msg</code>-Pfad oder Global-Context-Pfad ein Wert erreichbar ist.</p>
+    <p>Nur Änderungen am eigentlichen Basis-Mechanismus benötigen künftig eine neue Paketversion.</p>
 </script>
