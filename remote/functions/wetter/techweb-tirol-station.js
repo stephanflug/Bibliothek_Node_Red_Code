@@ -1,7 +1,7 @@
 "use strict";
 
 module.exports = async function run(ctx) {
-    const { msg, node, global } = ctx;
+    const { msg, node, global, config = {} } = ctx;
     const SOURCE_URL = "https://cdn3.techweb.at/api/weather/at/data?province=tirol&format=json";
 
     function fetchJson(url, redirects = 0) {
@@ -10,7 +10,7 @@ module.exports = async function run(ctx) {
             if (redirects > 5) return reject(new Error("Zu viele HTTP-Weiterleitungen"));
             const req = https.get(url, {
                 headers: {
-                    "User-Agent": "EBST-NodeRED-Remote-Function/1.0",
+                    "User-Agent": "EBST-NodeRED-Remote-Function/1.1",
                     "Accept": "application/json"
                 },
                 timeout: 15000
@@ -57,6 +57,7 @@ module.exports = async function run(ctx) {
         const values = [
             msg.station,
             msg.stationIndex,
+            config.stationIndex,
             msg.StationsnummerObject,
             global.get("wetter_station"),
             global.get("StationsnummerObject")
@@ -152,6 +153,7 @@ module.exports = async function run(ctx) {
     global.set("wetter_wind_Speed", windSpeed);
     global.set("wetter_wind_direction", windDirection);
     global.set("wetter_Luftdruck", airpressure);
+    global.set("wetter_station", selected.index);
 
     const now = new Date().toISOString();
     global.set("wetter_station_aktuell", {
@@ -188,7 +190,7 @@ module.exports = async function run(ctx) {
     node.status({
         fill: "green",
         shape: "dot",
-        text: `${data.location || "Station"}: ${temperature} °C · ${condition}`
+        text: `${selected.index} · ${data.location || "Station"}: ${temperature} °C · ${condition}`
     });
 
     return msg;
