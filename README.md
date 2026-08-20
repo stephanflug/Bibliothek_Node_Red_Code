@@ -4,19 +4,18 @@ Zentrale Funktionsbibliothek für Node-RED.
 
 **Einmal installieren – Funktionen zentral verwalten – Änderungen automatisch übernehmen.**
 
-Der Node **EBST Node Red Remote Funktion** stellt verschiedene zentral gepflegte Funktionen direkt in Node-RED zur Verfügung. Die gewünschte Funktion wird im Node ausgewählt. Einstellungen und verfügbare Datenpunkte werden passend zur Funktion automatisch angezeigt.
+Der Node **EBST Node Red Remote Funktion** stellt zentral gepflegte Funktionen direkt in Node-RED bereit. Die gewünschte Funktion wird im Node ausgewählt. Einstellungen und verfügbare Datenpunkte werden passend zur Funktion automatisch angezeigt.
 
 ---
 
-## Was bringt die EBST Node Red Remote Funktion?
+## Vorteile
 
 - nur **einen Basis-Node** in Node-RED installieren
-- Funktionen zentral aus der GitHub-Bibliothek verwenden
-- neue Funktionen automatisch in der Auswahlliste erhalten
-- Änderungen an bestehenden Funktionen automatisch übernehmen
-- funktionsabhängige Einstellungen direkt im Node vornehmen
-- verfügbare Datenpunkte und deren Verwendung direkt im Node anzeigen
-- bei einem GitHub-Fehler mit der letzten gültigen lokalen Version weiterarbeiten
+- neue Funktionen erscheinen automatisch in der Auswahlliste
+- Funktionsänderungen werden automatisch aus GitHub übernommen
+- Einstellungen werden je Funktion dynamisch eingeblendet
+- Datenpunkte, Ausgänge, Einheiten und Global-Context-Werte werden direkt im Node beschrieben
+- bei einem GitHub- oder Updatefehler wird die letzte gültige lokale Version weiterverwendet
 
 Ab **Basis-Version V1.3.0** können neue Funktionen, Einstellungen und Datenpunktbeschreibungen ergänzt werden, ohne den Basis-Node jedes Mal neu installieren zu müssen.
 
@@ -30,7 +29,7 @@ Aktuelles Installationspaket:
 node-red-contrib-ebst-remote-function-1.3.0.tgz
 ```
 
-Das Paket im Node-RED-Benutzerverzeichnis installieren:
+Installation im Node-RED-Benutzerverzeichnis:
 
 ```bash
 cd ~/.node-red
@@ -59,7 +58,7 @@ zur Verfügung.
 2. Node öffnen.
 3. Gewünschte **Funktion** auswählen.
 4. Falls erforderlich, die eingeblendeten Einstellungen ausfüllen.
-5. Node mit dem gewünschten Eingang und Ausgang verbinden.
+5. Ausgänge mit den gewünschten Folge-Nodes verbinden.
 6. **Deploy** ausführen.
 
 Die Anzahl der Ausgänge wird automatisch passend zur gewählten Funktion gesetzt.
@@ -73,11 +72,9 @@ Die Anzahl der Ausgänge wird automatisch passend zur gewählten Funktion gesetz
 **Version:** 1.2.0  
 **Ausgänge:** 2
 
-Lädt die ORF-Tirol-Wetterprognose für Innsbruck und ermittelt den Wetterzustand sowie die minimale und maximale Tagestemperatur.
+Lädt die ORF-Tirol-Wetterprognose für Innsbruck und ermittelt Wetterzustand sowie minimale und maximale Tagestemperatur.
 
 ### Ausgang 1 – Wetterdaten
-
-Wichtige Datenpunkte:
 
 ```text
 msg.payload.location
@@ -89,16 +86,6 @@ msg.payload.parser_ok
 msg.payload.stale
 ```
 
-Beispiele:
-
-| Datenpunkt | Bedeutung |
-|---|---|
-| `msg.payload.condition` | Wetterzustand, z. B. wolkenlos oder bedeckt |
-| `msg.payload.tmin_c` | minimale Tagestemperatur in °C |
-| `msg.payload.tmax_c` | maximale Tagestemperatur in °C |
-| `msg.payload.parser_ok` | `true`, wenn ORF erfolgreich ausgewertet wurde |
-| `msg.payload.stale` | `true`, wenn letzte gültige Werte verwendet werden |
-
 ### Ausgang 2 – Wetterzustände
 
 ```text
@@ -107,7 +94,7 @@ msg.payload
 
 Enthält die gesammelten unterschiedlichen Wetterzustände als JSON.
 
-Zusätzlich stehen unter anderem folgende Global-Werte zur Verfügung:
+Zusätzlich werden unter anderem diese Global-Werte gesetzt:
 
 ```text
 global.wettervorhersage
@@ -122,7 +109,7 @@ global.wetter_temp_Max
 **Version:** 1.1.0  
 **Ausgänge:** 1
 
-Lädt aktuelle Messwerte einer Tiroler Wetterstation.
+Lädt aktuelle Messwerte einer auswählbaren Tiroler Wetterstation.
 
 ### Einstellung
 
@@ -142,17 +129,6 @@ msg.payload.snow
 msg.payload.airpressure
 msg.payload.condition
 ```
-
-| Datenpunkt | Bedeutung |
-|---|---|
-| `msg.payload.temperature` | aktuelle Temperatur in °C |
-| `msg.payload.humidity` | relative Luftfeuchte in % |
-| `msg.payload.sun_w` | Sonnenstrahlung in W/m² |
-| `msg.payload.wind_speed` | Windgeschwindigkeit |
-| `msg.payload.wind_direction` | Windrichtung |
-| `msg.payload.rain_mm` | Niederschlag in mm |
-| `msg.payload.airpressure` | Luftdruck / Luftdrucktrend |
-| `msg.payload.condition` | automatisch ermittelter Wetterzustand |
 
 Zusätzlich werden die bisherigen Global-Werte weiter gesetzt:
 
@@ -179,8 +155,6 @@ Berechnet Sonnenwinkel, Sonnenhöhe, Sonnenaufgang, Sonnenuntergang und Sonnenmi
 
 ### Einstellungen
 
-Direkt im Node werden eingestellt:
-
 ```text
 Breitengrad
 Längengrad
@@ -198,16 +172,7 @@ msg.payload.times.night.value
 msg.payload.times.solarNoon.value
 ```
 
-| Datenpunkt | Bedeutung |
-|---|---|
-| `msg.payload.azimuthDegrees` | Sonnenrichtung in Grad: 0° Nord, 90° Ost, 180° Süd, 270° West |
-| `msg.payload.altitudeDegrees` | Sonnenhöhe über dem Horizont in Grad |
-| `msg.payload.isDay` | `true` = Tag, `false` = Nacht |
-| `msg.payload.times.sunrise.value` | Sonnenaufgang als lokale Uhrzeit |
-| `msg.payload.times.sunset.value` | Sonnenuntergang als lokale Uhrzeit |
-| `msg.payload.times.solarNoon.value` | Zeitpunkt des höchsten Sonnenstands |
-
-Zusätzlich werden folgende Global-Werte gesetzt:
+Zusätzlich:
 
 ```text
 global.Sonnenwinkel
@@ -225,13 +190,11 @@ global.Sonnenmittag
 **Ausgänge:** 4  
 **Externe Bibliothek:** nicht erforderlich
 
-Berechnet für den eingestellten Standort, wann die Sonne erstmals das Haus trifft. Ein Sonnentreffer liegt vor, wenn der Sonnen-Azimut innerhalb des eingestellten Richtungsfensters liegt und gleichzeitig die eingestellte Mindest-Sonnenhöhe erreicht ist.
+Berechnet für den eingestellten Standort, wann die Sonne erstmals das Haus trifft. Ein Treffer liegt vor, wenn der Sonnen-Azimut im eingestellten Richtungsfenster liegt und gleichzeitig die Mindest-Sonnenhöhe erreicht ist.
 
-Zusätzlich wird ein wetterabhängiges **Vorwarnfenster** vor der Erstbesonnung berechnet. Für die Wetterentscheidung ist ausschließlich `global.wettervorhersage` maßgeblich. `global.wetter_rain` und `global.wetter_sun` werden nur zur Diagnose angezeigt.
+Zusätzlich wird ein wetterabhängiges Vorwarnfenster vor der Erstbesonnung berechnet. Für die Wetterentscheidung ist ausschließlich `global.wettervorhersage` maßgeblich. `global.wetter_rain` und `global.wetter_sun` dienen nur zur Diagnose.
 
 ### Wichtige Einstellungen
-
-Direkt im Node können eingestellt werden:
 
 ```text
 Breitengrad
@@ -250,7 +213,7 @@ Bei fehlender Wettervorhersage erlauben
 Scan-Auflösung
 ```
 
-Azimut-Richtung:
+Azimut:
 
 ```text
 0°   = Nord
@@ -261,107 +224,158 @@ Azimut-Richtung:
 
 ### Ausgänge
 
-**Ausgang 1 – Vorwarnung**
+```text
+Ausgang 1 → Vorwarnung true/false
+Ausgang 2 → Diagnoseobjekt
+Ausgang 3 → aktueller Sonnen-Azimut
+Ausgang 4 → Uhrzeit der Erstbesonnung
+```
+
+---
+
+## Energie – Strompreis TIWAG / TINETZ + PV Einspeisung
+
+**Version:** 1.1.0  
+**Ausgänge:** 4  
+**Externe Bibliothek:** nicht erforderlich
+
+Diese Funktion ersetzt die separaten HTTP-Request- und Parser-Nodes für TIWAG und TINETZ.
+
+Sie lädt selbstständig:
+
+- den TIWAG-Arbeitspreis
+- das TINETZ-Netzentgelt
+- den TIWAG-PV-Einspeisepreis
+
+und berechnet daraus:
+
+- Gesamtpreis des Netzbezugs
+- PV-Einspeisevergütung
+- Mehrwert einer selbst verbrauchten PV-kWh gegenüber der Einspeisung
+
+### Webseiten sind einstellbar
+
+Die URLs werden direkt im Node gespeichert und können später angepasst werden:
 
 ```text
+TIWAG Energie-Webseite
+TINETZ Netz-Webseite
+TIWAG Einspeise-Webseite
+```
+
+Wenn ein Anbieter seine Seite ändert, kann zusätzlich das jeweilige **RegEx-Suchmuster** angepasst werden, ohne den Remote-Code ändern zu müssen.
+
+### Weitere Einstellungen
+
+```text
+PV-Einspeisung auswerten
+Fallback Energiepreis
+Fallback Netzentgelt
+Fallback PV-Einspeisung
+Zusatzkosten pro kWh
+Umsatzsteuer Energie
+TIWAG Brutto-RegEx
+TIWAG Netto-RegEx
+TINETZ RegEx
+PV-Einspeisung RegEx
+Fallbackwerte verwenden
+HTTP Timeout
+Topic Bezug €/kWh
+Topic Bezug ct/kWh
+Topic PV Einspeisung
+```
+
+### PV-Einspeisung
+
+Die TIWAG-Seite enthält Quartalspreise. Die Funktion sucht alle vorhandenen Werte und verwendet bevorzugt den Preis des **aktuellen Quartals**.
+
+Falls das aktuelle Quartal auf der Seite noch nicht vorhanden ist, wird der neueste verfügbare Quartalspreis verwendet. Erst wenn kein gültiger Wert gefunden wird, kommt – sofern aktiviert – der konfigurierte Fallback zum Einsatz.
+
+### Ausgänge
+
+```text
+Ausgang 1
 msg.payload
-```
+→ Bezugspreis in €/kWh
 
-`true`, wenn das aktuelle Wetter freigegeben ist und sich die aktuelle Zeit innerhalb des berechneten Vorwarnfensters befindet. Andernfalls `false`.
-
-**Ausgang 2 – Diagnose**
-
-Wichtige Datenpunkte:
-
-```text
-msg.payload.result.active
-msg.payload.result.reason
-msg.payload.sunNow.azimuthDeg
-msg.payload.sunNow.elevationDeg
-msg.payload.firstHit.firstHitLocal
-msg.payload.firstHit.firstHitPreLocal
-msg.payload.weather.wettervorhersage
-msg.payload.weather.effectivePreMinutes
-```
-
-| Datenpunkt | Bedeutung |
-|---|---|
-| `msg.payload.result.reason` | Begründung für die aktuelle Entscheidung |
-| `msg.payload.sunNow.azimuthDeg` | aktueller Sonnen-Azimut in ° |
-| `msg.payload.sunNow.elevationDeg` | aktuelle Sonnenhöhe in ° |
-| `msg.payload.firstHit.firstHitLocal` | berechnete Erstbesonnung mit Datum und Uhrzeit |
-| `msg.payload.firstHit.firstHitPreLocal` | Beginn des aktuellen Vorwarnfensters |
-| `msg.payload.weather.wettervorhersage` | tatsächlich verwendete Wettervorhersage |
-| `msg.payload.weather.effectivePreMinutes` | aktuell verwendete Vorwarnzeit in Minuten |
-
-**Ausgang 3 – Sonnen-Azimut**
-
-```text
+Ausgang 2
 msg.payload
-```
+→ Bezugspreis in ct/kWh
 
-Aktueller Sonnen-Azimut als Zahl von 0 bis 360°.
-
-**Ausgang 4 – Uhrzeit Erstbesonnung**
-
-```text
+Ausgang 3
 msg.payload
+→ PV-Einspeisepreis in ct/kWh
+
+Ausgang 4
+msg.payload
+→ Detailobjekt
 ```
 
-Berechnete Uhrzeit der Erstbesonnung als `HH:MM`. Wenn an diesem Tag kein Sonnentreffer gefunden wird, ist der Wert `null`.
-
-### Benötigter Global-Wert
+### Wichtige Datenpunkte aus Ausgang 4
 
 ```text
-global.wettervorhersage
+msg.payload.energyCt
+msg.payload.gridCt
+msg.payload.totalCt
+msg.payload.eur
+
+msg.payload.feedInCt
+msg.payload.feedInEur
+msg.payload.feedIn.quarter
+msg.payload.feedIn.year
+
+msg.payload.selfUseAdvantageCt
+msg.payload.selfUseAdvantageEur
+
+msg.payload.fallbackActive
 ```
 
-Dieser Wert entscheidet über die Wetterfreigabe. Die Wetterfunktion kann beispielsweise **ORF Wetter Innsbruck** sein.
-
-Optional für die Diagnose:
+`selfUseAdvantageCt` ist die Differenz zwischen Bezugspreis und Einspeisevergütung:
 
 ```text
-global.wetter_rain
-global.wetter_sun
+Mehrwert Eigenverbrauch = Bezugspreis - Einspeisepreis
 ```
 
-### Neuberechnung erzwingen
-
-Normalerweise wird die Erstbesonnung einmal pro Tag bzw. automatisch nach einer Konfigurationsänderung neu berechnet. Eine Neuberechnung kann zusätzlich erzwungen werden mit:
+Beispiel:
 
 ```text
-msg.topic = "recalc"
+Bezug:       20,42 ct/kWh
+Einspeisung:  8,29 ct/kWh
+Mehrwert:    12,13 ct/kWh
 ```
 
-oder:
+### Global-Context-Werte
 
 ```text
-msg.force = true
+global.strompreis_tiwag_energy_ct_kwh_gross
+global.strompreis_tinetz_net_ct_kwh
+global.strompreis_ct_kwh
+global.strompreis_eur_kwh
+global.strompreis_last_update
+
+global.pv_einspeisung_ct_kwh
+global.pv_einspeisung_eur_kwh
+
+global.pv_eigenverbrauch_mehrwert_ct_kwh
+global.pv_eigenverbrauch_mehrwert_eur_kwh
 ```
+
+Die bisherigen `flow.*`-Werte werden ebenfalls weiter gesetzt, damit vorhandene Flows weiterverwendet werden können.
 
 ---
 
 ## Datenpunkte direkt im Node anzeigen
 
-Bei jeder Funktion zeigt der Node unter **Verfügbare Datenpunkte** an:
+Bei jeder Funktion zeigt der Node unter **Verfügbare Datenpunkte** direkt an:
 
-- Bezeichnung des Datenpunkts
+- Bezeichnung
 - Zugriffspfad, z. B. `msg.payload.temperature`
 - Ausgangsnummer
-- Einheit, sofern vorhanden
+- Einheit
 - kurze Beschreibung
-- vorhandene Global-Context-Werte
+- verfügbare Global-Context-Werte
 
 Damit ist direkt ersichtlich, welchen Pfad ein nachfolgender Change-, Function-, Debug- oder Dashboard-Node verwenden muss.
-
-Beispiel:
-
-```text
-Sonnenaufgang
-Ausgang 1
-msg.payload.times.sunrise.value
-Lokale Uhrzeit des Sonnenaufgangs
-```
 
 ---
 
@@ -377,12 +391,13 @@ Wenn GitHub vorübergehend nicht erreichbar ist oder eine neue Funktionsversion 
 
 ## Neue Funktionen
 
-Neue Funktionen können künftig zentral ergänzt werden und erscheinen anschließend automatisch in der Funktionsauswahl.
+Neue Funktionen können zentral ergänzt werden und erscheinen anschließend automatisch in der Funktionsauswahl.
 
-Auch zusätzliche Einstellungen wie beispielsweise
+Auch zusätzliche Einstellungen wie
 
 ```text
 IP-Adresse
+URL
 Stationsauswahl
 Grenzwert
 Temperatur
@@ -391,6 +406,7 @@ JA / NEIN
 Text
 Zahl
 Auswahlliste
+RegEx
 ```
 
 können dynamisch bereitgestellt werden, ohne den Basis-Node neu zu installieren.
@@ -406,13 +422,13 @@ EBST Node Red Remote Funktion
 Basis-Version: V1.3.0
 ```
 
-Die eigentlichen Remote-Funktionen besitzen unabhängig davon ihre eigene Versionsnummer.
+Die Remote-Funktionen besitzen unabhängig davon ihre eigene Versionsnummer.
 
 ### Unterstütze das Büro-Kaffeekonto!
 
-Damit der Kaffee im Büro nie ausgeht, wäre eine kleine Spende super! 💰☕  
-Jeder Beitrag hilft, die Kaffeemaschine am Laufen zu halten, damit wir alle produktiv bleiben können!
+Damit der Kaffee im Büro nie ausgeht, wäre eine kleine Spende super!  
+Jeder Beitrag hilft, die Kaffeemaschine am Laufen zu halten.
 
 [**Spende für Kaffee**](https://www.paypal.com/donate/?business=ACU26RPTCA44S&no_recurring=0&item_name=Dieses+Projekt+und+der+Service+kann+nur+durch+eure+Spenden+finanziert+werden.&currency_code=EUR)
 
-Vielen Dank für deine Unterstützung! 🙌
+Vielen Dank für deine Unterstützung!
