@@ -1,7 +1,7 @@
 {
   "name": "node-red-contrib-ebst-remote-function",
-  "version": "1.3.0",
-  "description": "Dynamischer universeller Node-RED Node „EBST Node Red Remote Funktion“. Funktionen, Einstellungen und Datenpunktbeschreibungen werden zentral aus dem GitHub-Manifest geladen.",
+  "version": "1.4.0",
+  "description": "Dynamischer universeller Node-RED Node „EBST Node Red Remote Funktion“ mit zentralen Remote-Funktionen, dynamischen Einstellungen, Datenpunktbeschreibung und integriertem HTTP-Client.",
   "private": true,
   "license": "UNLICENSED",
   "repository": {
@@ -12,12 +12,16 @@
   "engines": {
     "node": ">=18"
   },
+  "dependencies": {
+    "got": "13.0.0",
+    "tough-cookie": "4.1.4"
+  },
   "node-red": {
     "nodes": {
       "ebst-remote-function": "ebst-remote-function.js"
     }
   },
   "scripts": {
-    "check": "node --check ebst-remote-function.js && node --check lib/remote-manager.js && node --check remote/functions/wetter/orf-innsbruck.js && node --check remote/functions/wetter/techweb-tirol-station.js && node --check remote/functions/astronomie/sonnenstand.js"
+    "check": "node --check ebst-remote-function.js && node --check lib/remote-manager.js && node --check lib/http-client.js && node --check remote/functions/wetter/orf-innsbruck.js && node --check remote/functions/wetter/techweb-tirol-station.js && node --check remote/functions/astronomie/sonnenstand.js && node --check remote/functions/astronomie/sonne-trifft-haus.js && node --check remote/functions/energie/strompreis-tiwag-tinetz.js"
   }
 }
