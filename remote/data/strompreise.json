@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "updatedAt": "2026-08-20T13:06:00.000Z",
+  "energy": {
+    "valueCt": 11.76,
+    "netCt": 9.8,
+    "sourceUrl": "https://www.tiwag.at/tutwas/"
+  },
+  "grid": {
+    "valueCt": 8.66,
+    "sourceUrl": "https://www.tinetz.at/infobereich/allgemeines/netztarifaenderungen-ab-2026/"
+  },
+  "feedIn": {
+    "valueCt": 8.29,
+    "quarter": 3,
+    "year": 2026,
+    "sourceUrl": "https://www.tiwag.at/privat/photovoltaik/tiwag-pv-einspeisung/"
+  }
+}
