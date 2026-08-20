@@ -102,6 +102,48 @@
         {"scope":"global","path":"global.Sonnenuntergang","label":"Sonnenuntergang global","description":"Global gespeicherte Sonnenuntergangszeit."},
         {"scope":"global","path":"global.Sonnenmittag","label":"Sonnenmittag global","description":"Global gespeicherte Sonnenmittagszeit."}
       ]
+    },
+    "sonne-trifft-haus": {
+      "name": "Sonne trifft Haus",
+      "category": "Astronomie",
+      "version": "1.0.0",
+      "url": "https://raw.githubusercontent.com/stephanflug/Bibliothek_Node_Red_Code/main/remote/functions/astronomie/sonne-trifft-haus.js",
+      "description": "Berechnet die tägliche Erstbesonnung eines Hauses aus Standort, Azimutfenster und Mindest-Sonnenhöhe und aktiviert wetterabhängig ein Vorwarnfenster vor dem ersten Sonnentreffer.",
+      "localFile": "remote/functions/astronomie/sonne-trifft-haus.js",
+      "outputs": 4,
+      "outputLabels": ["Vorwarnung", "Diagnose", "Sonnen-Azimut", "Erstbesonnung Uhrzeit"],
+      "settings": [
+        {"id":"latitude","label":"Breitengrad","type":"number","default":47.2794663,"min":-90,"max":90,"step":0.0000001,"required":true,"description":"Breitengrad des Gebäudestandorts."},
+        {"id":"longitude","label":"Längengrad","type":"number","default":10.7662632,"min":-180,"max":180,"step":0.0000001,"required":true,"description":"Längengrad des Gebäudestandorts."},
+        {"id":"azStart","label":"Azimut Start","type":"number","default":90,"min":0,"max":360,"step":0.1,"required":true,"unit":"°","description":"Beginn des Richtungsfensters, ab dem die Sonne das Haus treffen kann. 0° Nord, 90° Ost, 180° Süd, 270° West."},
+        {"id":"azEnd","label":"Azimut Ende","type":"number","default":152,"min":0,"max":360,"step":0.1,"required":true,"unit":"°","description":"Ende des Richtungsfensters. Ein Fenster über 360° wird unterstützt."},
+        {"id":"minAltDeg","label":"Mindest-Sonnenhöhe","type":"number","default":15,"min":-10,"max":90,"step":0.1,"required":true,"unit":"°","description":"Mindesthöhe der Sonne über dem Horizont. Bei Bergen oder Verschattung entsprechend erhöhen."},
+        {"id":"preMinutes","label":"Vorwarnzeit Standard","type":"number","default":180,"min":0,"max":1440,"step":1,"required":true,"unit":"min","description":"Standardzeit vor der berechneten Erstbesonnung, in der Ausgang 1 aktiv wird."},
+        {"id":"preMinutesWolkenlosSommer","label":"Vorwarnzeit wolkenlos im Sommer","type":"number","default":180,"min":0,"max":1440,"step":1,"required":true,"unit":"min","description":"Spezielle Vorwarnzeit bei exakt 'wolkenlos' innerhalb der definierten Sommermonate."},
+        {"id":"summerMonthStart","label":"Sommer Startmonat","type":"number","default":6,"min":1,"max":12,"step":1,"required":true,"description":"Erster Monat des Sommerzeitraums, 1=Jänner bis 12=Dezember."},
+        {"id":"summerMonthEnd","label":"Sommer Endmonat","type":"number","default":8,"min":1,"max":12,"step":1,"required":true,"description":"Letzter Monat des Sommerzeitraums. Bereiche über den Jahreswechsel werden unterstützt."},
+        {"id":"timeZone","label":"Zeitzone","type":"text","default":"Europe/Vienna","required":true,"description":"IANA-Zeitzone für Tagesgrenzen und lokale Uhrzeiten."},
+        {"id":"weatherAllowRegex","label":"Wetter erlauben (RegEx)","type":"text","default":"^(?:wolkenlos|sonnig|sonne|leicht[\\s-]+(?:bewölkt|bedeckt))$","required":true,"description":"Regulärer Ausdruck für Wetterzustände aus global.wettervorhersage, die Sonne erlauben."},
+        {"id":"weatherBlockRegex","label":"Wetter blockieren (RegEx)","type":"text","default":"niederschlag|regen|schauer|gewitter|stark[\\s-]+bewölkt|stark[\\s-]+bewoelkt","required":false,"description":"Regulärer Ausdruck für Zustände, die immer blockieren. Die Blockregel wird vor der Freigaberegel geprüft."},
+        {"id":"allowIfUnknown","label":"Bei fehlender Wettervorhersage erlauben","type":"boolean","default":false,"description":"Wenn aktiviert, darf das Vorwarnfenster auch ohne global.wettervorhersage aktiv werden."},
+        {"id":"scanStepMin","label":"Scan-Auflösung","type":"number","default":1,"min":1,"max":60,"step":1,"required":true,"unit":"min","description":"Zeitliche Auflösung für die tägliche Suche nach der ersten Besonnung. 1 Minute entspricht der bisherigen Berechnung."}
+      ],
+      "dataPoints": [
+        {"output":1,"path":"msg.payload","label":"Vorwarnung aktiv","type":"boolean","description":"true während des wetterabhängigen Vorwarnfensters vor der Erstbesonnung, sonst false."},
+        {"output":2,"path":"msg.payload.result.active","label":"Vorwarnung Diagnose","type":"boolean","description":"Diagnosewert der aktuellen Vorwarnentscheidung."},
+        {"output":2,"path":"msg.payload.result.reason","label":"Entscheidungsgrund","type":"string","description":"Textbegründung, warum die Vorwarnung aktiv oder inaktiv ist."},
+        {"output":2,"path":"msg.payload.sunNow.azimuthDeg","label":"Aktueller Sonnen-Azimut","type":"number","unit":"°","description":"Aktuelle Sonnenrichtung innerhalb des Diagnoseobjekts."},
+        {"output":2,"path":"msg.payload.sunNow.elevationDeg","label":"Aktuelle Sonnenhöhe","type":"number","unit":"°","description":"Aktuelle Sonnenhöhe innerhalb des Diagnoseobjekts."},
+        {"output":2,"path":"msg.payload.firstHit.firstHitLocal","label":"Erstbesonnung Datum/Zeit","type":"string","description":"Berechneter erster Sonnentreffer des aktuellen Tages als lokale Datum/Zeit-Angabe."},
+        {"output":2,"path":"msg.payload.firstHit.firstHitPreLocal","label":"Beginn Vorwarnfenster","type":"string","description":"Lokaler Zeitpunkt, ab dem die Vorwarnung beginnen kann."},
+        {"output":2,"path":"msg.payload.weather.effectivePreMinutes","label":"Aktive Vorwarnzeit","type":"number","unit":"min","description":"Tatsächlich verwendete Vorwarnzeit nach Sommer-/Wolkenlos-Logik."},
+        {"output":2,"path":"msg.payload.weather.wettervorhersage","label":"Verwendete Wettervorhersage","type":"string","description":"Der zur Entscheidung verwendete Wert aus global.wettervorhersage."},
+        {"output":3,"path":"msg.payload","label":"Sonnen-Azimut","type":"number","unit":"°","description":"Aktueller Sonnen-Azimut als einzelner Zahlenwert 0 bis 360."},
+        {"output":4,"path":"msg.payload","label":"Uhrzeit Erstbesonnung","type":"string","description":"Berechnete Erstbesonnung als HH:MM oder null, wenn heute kein Treffer gefunden wird."},
+        {"scope":"global","path":"global.wettervorhersage","label":"Wettervorhersage Eingang","type":"string","description":"Entscheidender Wetterwert für das Wetter-Gate. Dieser Globalwert muss von einer Wetterfunktion bereitgestellt werden."},
+        {"scope":"global","path":"global.wetter_rain","label":"Regen Diagnose","type":"number","unit":"mm","description":"Optionaler Diagnosewert; beeinflusst die Entscheidung nicht."},
+        {"scope":"global","path":"global.wetter_sun","label":"Sonnenstrahlung Diagnose","type":"number","description":"Optionaler Diagnosewert; beeinflusst die Entscheidung nicht."}
+      ]
     }
   }
 }
