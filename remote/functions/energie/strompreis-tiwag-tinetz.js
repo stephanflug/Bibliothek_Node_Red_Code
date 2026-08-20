@@ -1,10 +1,11 @@
 "use strict";
 
-const http = require("http");
-const https = require("https");
-
 module.exports = async function run(ctx) {
-    const { msg, node, flow, global, config } = ctx;
+    const { msg, node, flow, global, config, httpRequest } = ctx;
+
+    if (typeof httpRequest !== "function") {
+        throw new Error("Strompreis: integrierter HTTP-Client fehlt. EBST Basis V1.4.0 oder neuer installieren.");
+    }
 
     function n(value, fallback) {
         const x = Number(value);
@@ -28,6 +29,15 @@ module.exports = async function run(ctx) {
         return Number.isFinite(x) ? x : NaN;
     }
 
+    function normalizeText(text) {
+        return String(text || "")
+            .normalize("NFKC")
+            .replace(/[\u00A0\u202F\u2007]/g, " ")
+            .replace(/[\u200B\u00AD]/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
     function decodeHtmlEntities(text) {
         return String(text || "")
             .replace(/&nbsp;|&#160;/gi, " ")
@@ -36,26 +46,34 @@ module.exports = async function run(ctx) {
             .replace(/&#39;|&apos;/gi, "'")
             .replace(/&lt;/gi, "<")
             .replace(/&gt;/gi, ">")
-            .replace(/&#(\d+);/g, (m, code) => {
-                const c = Number(code);
-                return Number.isFinite(c) ? String.fromCodePoint(c) : m;
+            .replace(/&#(\d+);/g, (whole, code) => {
+                const x = Number(code);
+                return Number.isFinite(x) ? String.fromCodePoint(x) : whole;
             })
-            .replace(/&#x([0-9a-f]+);/gi, (m, code) => {
-                const c = parseInt(code, 16);
-                return Number.isFinite(c) ? String.fromCodePoint(c) : m;
+            .replace(/&#x([0-9a-f]+);/gi, (whole, code) => {
+                const x = parseInt(code, 16);
+                return Number.isFinite(x) ? String.fromCodePoint(x) : whole;
             });
     }
 
     function htmlToText(html) {
-        return decodeHtmlEntities(html)
-            .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
-            .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
-            .replace(/<!--[\s\S]*?-->/g, " ")
-            .replace(/<[^>]+>/g, " ")
-            .replace(/[\u00A0\u202F\u2007]/g, " ")
-            .replace(/[\u200B\u00AD]/g, "")
-            .replace(/\s+/g, " ")
-            .trim();
+        return normalizeText(
+            decodeHtmlEntities(html)
+                .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
+                .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
+                .replace(/<!--[\s\S]*?-->/g, " ")
+                .replace(/<[^>]+>/g, " ")
+        );
+    }
+
+    function titleFromHtml(html) {
+        const m = String(html || "").match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+        return m ? htmlToText(m[1]) : null;
+    }
+
+    function preview(text) {
+        const s = normalizeText(text);
+        return s.length > 260 ? s.slice(0, 260) + "…" : s;
     }
 
     function compileRegex(pattern, name, flags = "i") {
@@ -66,52 +84,11 @@ module.exports = async function run(ctx) {
         }
     }
 
-    function isHtmlPayload(value) {
-        if (Buffer.isBuffer(value)) value = value.toString("utf8");
-        if (typeof value !== "string") return false;
-        const s = value.trim();
-        if (s.length < 100) return false;
-        return /<html\b|<!doctype\s+html|<body\b|<main\b|<div\b/i.test(s) || /Cent\s*\/?\s*kWh|ct\s*\/?\s*kWh/i.test(s);
-    }
-
-    function requestText(url, timeoutMs, redirects = 0) {
-        return new Promise((resolve, reject) => {
-            if (redirects > 5) return reject(new Error("Zu viele HTTP-Weiterleitungen"));
-            let parsed;
-            try { parsed = new URL(url); } catch (_) { return reject(new Error(`Ungültige URL: ${url}`)); }
-            if (!/^https?:$/.test(parsed.protocol)) return reject(new Error(`Nur HTTP/HTTPS wird unterstützt: ${url}`));
-            const client = parsed.protocol === "https:" ? https : http;
-            const req = client.get(parsed, {
-                headers: {
-                    "User-Agent": "Mozilla/5.0 (Node-RED EBST Strompreis)",
-                    "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8",
-                    "Accept-Language": "de-AT,de;q=0.9,en;q=0.5",
-                    "Cache-Control": "no-cache"
-                },
-                timeout: timeoutMs
-            }, res => {
-                const status = res.statusCode || 0;
-                if (status >= 300 && status < 400 && res.headers.location) {
-                    res.resume();
-                    const next = new URL(res.headers.location, parsed).toString();
-                    requestText(next, timeoutMs, redirects + 1).then(resolve, reject);
-                    return;
-                }
-                if (status < 200 || status >= 300) {
-                    res.resume();
-                    return reject(new Error(`HTTP ${status} bei ${url}`));
-                }
-                res.setEncoding("utf8");
-                let body = "";
-                res.on("data", chunk => {
-                    body += chunk;
-                    if (body.length > 6 * 1024 * 1024) req.destroy(new Error("Antwort ist größer als 6 MB"));
-                });
-                res.on("end", () => resolve({ body, status, finalUrl: parsed.toString(), contentType: String(res.headers["content-type"] || "") }));
-            });
-            req.on("timeout", () => req.destroy(new Error("HTTP Timeout")));
-            req.on("error", reject);
-        });
+    function cookieWall(text, title) {
+        const value = `${title || ""} ${text || ""}`.toLowerCase();
+        return value.includes("cookie-information") ||
+            value.includes("cookie-popup does not work properly without javascript") ||
+            value.includes("please enable it to continue");
     }
 
     const CFG = {
@@ -119,229 +96,264 @@ module.exports = async function run(ctx) {
         gridUrl: String(config.gridUrl || "https://www.tinetz.at/infobereich/allgemeines/netztarifaenderungen-ab-2026/").trim(),
         feedInEnabled: b(config.feedInEnabled, true),
         feedInUrl: String(config.feedInUrl || "https://www.tiwag.at/privat/photovoltaik/tiwag-pv-einspeisung/").trim(),
+
         energyFallbackCt: n(config.energyFallbackCt, 11.76),
         gridFallbackCt: n(config.gridFallbackCt, 8.66),
         feedInFallbackCt: n(config.feedInFallbackCt, 8.29),
         extraCtPerKwh: n(config.extraCtPerKwh, 0),
         vatPercent: n(config.vatPercent, 20),
+
         energyGrossRegex: String(config.energyGrossRegex || "(\\d{1,2}[,.]\\d{1,3})\\s*(?:Cent|ct)\\s*\\/?\\s*kWh\\s*inkl\\.?\\s*USt"),
         energyNetRegex: String(config.energyNetRegex || "(\\d{1,2}[,.]\\d{1,3})\\s*(?:Cent|ct)\\s*\\/?\\s*kWh\\s*exkl\\.?\\s*USt"),
-        gridRegex: String(config.gridRegex || "Tirol[^.]{0,220}?(\\d{1,2}[,.]\\d{1,3})\\s*(?:Cent|ct)\\s*\\/?\\s*kWh"),
-        feedInRegex: String(config.feedInRegex || "Q([1-4])\\s*(\\d{4})[^\\d]{0,180}?(\\d{1,2}[,.]\\d{1,3})\\s*(?:Cent|ct)\\s*\\/?\\s*kWh"),
+        gridRegex: String(config.gridRegex || "Tirol[^.]{0,160}?(\\d{1,2}[,.]\\d{1,3})\\s*(?:Cent|ct)\\s*\\/?\\s*kWh"),
+        feedInRegex: String(config.feedInRegex || "Q([1-4])\\s*(\\d{4})[^\\d]{0,120}?(\\d{1,2}[,.]\\d{1,3})\\s*(?:Cent|ct)\\s*\\/?\\s*kWh"),
+
         allowFallback: b(config.allowFallback, true),
-        timeoutSec: Math.max(3, Math.min(60, n(config.timeoutSec, 15))),
+        timeoutSec: Math.max(3, Math.min(120, n(config.timeoutSec, 15))),
+
         topicEur: String(config.topicEur || "0_userdata.0.PV.Ersparnis.Strompreis_EUR_kWh"),
         topicCt: String(config.topicCt || "0_userdata.0.PV.Ersparnis.Strompreis_ct_kWh"),
         topicFeedInCt: String(config.topicFeedInCt || "0_userdata.0.PV.Einspeisung.Strompreis_ct_kWh")
     };
 
-    const energyGrossRe = compileRegex(CFG.energyGrossRegex, "TIWAG Brutto-RegEx");
-    const energyNetRe = compileRegex(CFG.energyNetRegex, "TIWAG Netto-RegEx");
-    const gridConfiguredRe = compileRegex(CFG.gridRegex, "TINETZ RegEx");
+    if (!CFG.energyUrl || !CFG.gridUrl) throw new Error("Strompreis: Energie-URL und Netz-URL müssen gesetzt sein");
+    if (CFG.feedInEnabled && !CFG.feedInUrl) throw new Error("Strompreis: Einspeise-URL muss gesetzt sein");
 
-    function parseEnergy(text) {
-        let m = energyGrossRe.exec(text);
-        if (!m) m = /(\d{1,2}[,.]\d{1,3})\s*Cent\s*\/?\s*kWh\s*inkl\.?\s*USt/i.exec(text);
-        if (m) {
-            const ct = toNum(m[1]);
-            if (ct > 0 && ct <= 100) return { ct: round(ct, 3), source: "Node-RED HTTP · Webseite brutto", fallback: false, matched: m[0] };
+    async function loadPage(url) {
+        const response = await httpRequest({
+            method: "GET",
+            url,
+            responseType: "text",
+            timeoutMs: CFG.timeoutSec * 1000,
+            maxRedirects: 21,
+            followRedirects: true,
+            decompress: false,
+            maxBodyBytes: 6 * 1024 * 1024
+        });
+
+        const html = String(response.body || "");
+        const text = htmlToText(html);
+        const title = titleFromHtml(html);
+        const page = {
+            httpStatus: response.statusCode,
+            finalUrl: response.url || url,
+            contentType: String((response.headers && response.headers["content-type"]) || ""),
+            fetchMethod: "ebst-http-got",
+            bytes: Buffer.byteLength(html, "utf8"),
+            title,
+            preview: preview(text),
+            cookieWallDetected: cookieWall(text, title),
+            redirects: Array.isArray(response.redirectList) ? response.redirectList.length : 0
+        };
+
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+            const err = new Error(`HTTP ${response.statusCode}`);
+            err.page = page;
+            throw err;
         }
-        m = energyNetRe.exec(text);
-        if (!m) m = /(\d{1,2}[,.]\d{1,3})\s*Cent\s*\/?\s*kWh\s*exkl\.?\s*USt/i.exec(text);
-        if (m) {
-            const netCt = toNum(m[1]);
-            if (netCt > 0 && netCt <= 100) return { ct: round(netCt * (1 + CFG.vatPercent / 100), 3), netCt: round(netCt, 3), source: `Node-RED HTTP · Webseite netto + ${CFG.vatPercent}% USt`, fallback: false, matched: m[0] };
-        }
-        return null;
+
+        return { html, text, page };
     }
 
-    function parseGrid(text) {
-        const patterns = [
-            gridConfiguredRe,
-            /Tirol[^.]{0,160}?(\d{1,2}[,.]\d{1,3})\s*Cent\s*\/?\s*kWh/i,
-            /Netzentgelt\w*[^.]{0,220}?(\d{1,2}[,.]\d{1,3})\s*Cent\s*\/?\s*kWh/i,
-            /in\s+Tirol[^.]{0,260}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/i
+    function validPrice(ct) {
+        return Number.isFinite(ct) && ct > 0 && ct <= 100;
+    }
+
+    function findEnergy(text) {
+        const patternsGross = [
+            { re: compileRegex(CFG.energyGrossRegex, "TIWAG Brutto-RegEx"), source: "Webseite brutto · konfiguriertes RegEx" },
+            { re: /(\d{1,2}[,.]\d{1,3})\s*Cent\s*\/?\s*kWh\s*inkl\.?\s*USt/i, source: "Webseite brutto · Standarderkennung" },
+            { re: /inkl\.?\s*USt[^\d]{0,100}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/i, source: "Webseite brutto · flexible Erkennung" }
         ];
-        for (const re of patterns) {
-            const m = re.exec(text);
-            if (!m) continue;
-            const ct = toNum(m[1]);
-            if (ct > 0 && ct <= 100) return { ct: round(ct, 3), source: "Node-RED HTTP · Webseite", fallback: false, matched: m[0] };
+
+        for (const item of patternsGross) {
+            const m = item.re.exec(text);
+            const ct = m ? toNum(m[1]) : NaN;
+            if (validPrice(ct)) return { ct: round(ct, 3), source: item.source, matched: m[0], fallback: false };
+        }
+
+        const patternsNet = [
+            { re: compileRegex(CFG.energyNetRegex, "TIWAG Netto-RegEx"), source: "Webseite netto · konfiguriertes RegEx" },
+            { re: /(\d{1,2}[,.]\d{1,3})\s*Cent\s*\/?\s*kWh\s*exkl\.?\s*USt/i, source: "Webseite netto · Standarderkennung" }
+        ];
+
+        for (const item of patternsNet) {
+            const m = item.re.exec(text);
+            const netCt = m ? toNum(m[1]) : NaN;
+            if (validPrice(netCt)) {
+                return {
+                    ct: round(netCt * (1 + CFG.vatPercent / 100), 3),
+                    netCt: round(netCt, 3),
+                    source: `${item.source} + ${CFG.vatPercent}% USt`,
+                    matched: m[0],
+                    fallback: false
+                };
+            }
+        }
+
+        return null;
+    }
+
+    function findGrid(text) {
+        const patterns = [
+            { re: compileRegex(CFG.gridRegex, "TINETZ RegEx"), source: "Webseite · konfiguriertes RegEx" },
+            { re: /Tirol[^.]{0,160}?(\d{1,2}[,.]\d{1,3})\s*Cent\s*\/?\s*kWh/i, source: "Webseite · Tirol-Erkennung" },
+            { re: /Netzentgelt\w*[^.]{0,220}?(\d{1,2}[,.]\d{1,3})\s*Cent\s*\/?\s*kWh/i, source: "Webseite · Netzentgelt-Erkennung" },
+            { re: /(?:Netz|Netzentgelt)[\s\S]{0,220}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/i, source: "Webseite · flexible Erkennung" }
+        ];
+
+        for (const item of patterns) {
+            const m = item.re.exec(text);
+            const ct = m ? toNum(m[1]) : NaN;
+            if (validPrice(ct)) return { ct: round(ct, 3), source: item.source, matched: m[0], fallback: false };
         }
         return null;
     }
 
-    function parseFeedIn(text) {
+    function findFeedIn(text) {
         const rows = [];
         const patterns = [
             compileRegex(CFG.feedInRegex, "PV-Einspeisung RegEx", "gi"),
-            /Q\s*([1-4])\s*(?:\/|[-–—:]|\s)*\s*(\d{4})[^\d]{0,220}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/gi,
-            /([1-4])\.\s*Quartal\s*(\d{4})[^\d]{0,220}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/gi
+            /Q\s*([1-4])\s*[\/-]?\s*(\d{4})[^\d]{0,160}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/gi,
+            /([1-4])\.\s*Quartal\s*(\d{4})[^\d]{0,160}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/gi
         ];
+
         for (const re of patterns) {
-            re.lastIndex = 0;
             let m;
             while ((m = re.exec(text)) !== null) {
                 const quarter = Number(m[1]);
                 const year = Number(m[2]);
                 const ct = toNum(m[3]);
-                if (quarter >= 1 && quarter <= 4 && year >= 2000 && year <= 2200 && ct > 0 && ct <= 100) {
-                    rows.push({ quarter, year, ct: round(ct, 3), matched: m[0] });
+                if (quarter >= 1 && quarter <= 4 && year >= 2000 && year <= 2200 && validPrice(ct)) {
+                    const key = `${year}-Q${quarter}`;
+                    if (!rows.some(r => r.key === key && r.ct === round(ct, 3))) {
+                        rows.push({ key, quarter, year, ct: round(ct, 3), matched: m[0] });
+                    }
                 }
                 if (m[0] === "") re.lastIndex++;
             }
-            if (rows.length) break;
         }
+
         if (!rows.length) return null;
+
         const now = new Date();
-        const cq = Math.floor(now.getMonth() / 3) + 1;
-        const cy = now.getFullYear();
-        const ckey = cy * 4 + cq;
-        let selected = rows.find(r => r.year === cy && r.quarter === cq);
+        const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
+        const currentYear = now.getFullYear();
+        const currentKey = currentYear * 4 + currentQuarter;
+
+        let selected = rows.find(r => r.year === currentYear && r.quarter === currentQuarter);
+        let source = "Webseite aktuelles Quartal";
+
         if (!selected) {
-            selected = rows.filter(r => r.year * 4 + r.quarter <= ckey)
-                .sort((a, b) => (b.year * 4 + b.quarter) - (a.year * 4 + a.quarter))[0];
+            const notFuture = rows
+                .filter(r => r.year * 4 + r.quarter <= currentKey)
+                .sort((a, z) => (z.year * 4 + z.quarter) - (a.year * 4 + a.quarter));
+            selected = notFuture[0] || rows.slice().sort((a, z) => (z.year * 4 + z.quarter) - (a.year * 4 + a.quarter))[0];
+            source = "Webseite neuester verfügbarer Quartalspreis";
         }
-        if (!selected) selected = rows.sort((a, b) => (b.year * 4 + b.quarter) - (a.year * 4 + a.quarter))[0];
+
         return {
             enabled: true,
             ct: selected.ct,
             eur: round(selected.ct / 100, 5),
             quarter: selected.quarter,
             year: selected.year,
-            source: selected.year === cy && selected.quarter === cq ? "Node-RED HTTP · aktuelles Quartal" : "Node-RED HTTP · neuester verfügbarer Quartalspreis",
-            fallback: false,
+            source,
             matched: selected.matched,
-            foundPrices: rows.length
+            foundPrices: rows.length,
+            fallback: false
         };
     }
 
-    function explicitSource(topic) {
-        const t = String(topic || "").toLowerCase();
-        if (/feed|einspeis|pv/.test(t)) return "feedIn";
-        if (/grid|netz|tinetz/.test(t)) return "grid";
-        if (/energy|energie|tiwag/.test(t)) return "energy";
-        return null;
-    }
-
-    function detectAndParse(text, topic) {
-        const forced = explicitSource(topic);
-        if (forced === "feedIn") return { source: "feedIn", value: parseFeedIn(text) };
-        if (forced === "grid") return { source: "grid", value: parseGrid(text) };
-        if (forced === "energy") return { source: "energy", value: parseEnergy(text) };
-
-        if (/Q\s*[1-4]|Quartal/i.test(text) && /PV|Einspeis|Abnahme|Photovoltaik/i.test(text)) {
-            const v = parseFeedIn(text); if (v) return { source: "feedIn", value: v };
-        }
-        if (/TINETZ|Netzentgelt|Netztarif|Netznutzung/i.test(text)) {
-            const v = parseGrid(text); if (v) return { source: "grid", value: v };
-        }
-        if (/TIWAG|Arbeitspreis|inkl\.?\s*USt|exkl\.?\s*USt/i.test(text)) {
-            const v = parseEnergy(text); if (v) return { source: "energy", value: v };
+    async function energyPrice() {
+        let page = null;
+        let error = null;
+        try {
+            const loaded = await loadPage(CFG.energyUrl);
+            page = loaded.page;
+            const found = findEnergy(loaded.text);
+            if (found) return { ...found, page };
+            error = page.cookieWallDetected ? "Cookie-Seite statt Tarifseite erhalten" : "Preis nicht gefunden";
+        } catch (err) {
+            page = err.page || null;
+            error = err.message;
         }
 
-        const feed = parseFeedIn(text); if (feed) return { source: "feedIn", value: feed };
-        const grid = parseGrid(text); if (grid) return { source: "grid", value: grid };
-        const energy = parseEnergy(text); if (energy) return { source: "energy", value: energy };
-        return { source: null, value: null };
+        if (!CFG.allowFallback) throw new Error(`TIWAG Energie: ${error}`);
+        return { ct: round(CFG.energyFallbackCt, 3), netCt: null, source: "Fallback", fallback: true, matched: null, error, page };
     }
 
-    const CACHE_KEY = "ebst_strompreis_html_cache";
-    const cache = flow.get(CACHE_KEY) || {};
-    const incomingHtml = isHtmlPayload(msg.payload);
-
-    if (incomingHtml) {
-        const raw = Buffer.isBuffer(msg.payload) ? msg.payload.toString("utf8") : String(msg.payload);
-        const text = htmlToText(raw);
-        const parsed = detectAndParse(text, msg.topic);
-        if (!parsed.source || !parsed.value) {
-            node.status({ fill: "yellow", shape: "ring", text: "HTML empfangen · Preis nicht erkannt" });
-            const diagnostic = {
-                mode: "incoming-html",
-                parserOk: false,
-                topic: msg.topic || null,
-                bytes: Buffer.byteLength(raw, "utf8"),
-                preview: text.slice(0, 400),
-                cache: Object.keys(cache)
-            };
-            return [null, null, null, { topic: "strompreis-details", payload: diagnostic }];
+    async function gridPrice() {
+        let page = null;
+        let error = null;
+        try {
+            const loaded = await loadPage(CFG.gridUrl);
+            page = loaded.page;
+            const found = findGrid(loaded.text);
+            if (found) return { ...found, page };
+            error = page.cookieWallDetected ? "Cookie-Seite statt Tarifseite erhalten" : "Preis nicht gefunden";
+        } catch (err) {
+            page = err.page || null;
+            error = err.message;
         }
-        parsed.value.receivedAt = new Date().toISOString();
-        parsed.value.inputMode = "node-red-http";
-        cache[parsed.source] = parsed.value;
-        flow.set(CACHE_KEY, cache);
+
+        if (!CFG.allowFallback) throw new Error(`TINETZ Netz: ${error}`);
+        return { ct: round(CFG.gridFallbackCt, 3), source: "Fallback", fallback: true, matched: null, error, page };
     }
 
-    if (!incomingHtml && !cache.energy && !cache.grid) {
-        const timeoutMs = CFG.timeoutSec * 1000;
-        async function fetchAndParse(url, source) {
-            try {
-                const page = await requestText(url, timeoutMs);
-                const text = htmlToText(page.body);
-                const value = source === "energy" ? parseEnergy(text) : source === "grid" ? parseGrid(text) : parseFeedIn(text);
-                if (value) {
-                    value.inputMode = "internal-http";
-                    value.receivedAt = new Date().toISOString();
-                    value.page = { httpStatus: page.status, finalUrl: page.finalUrl, contentType: page.contentType, bytes: Buffer.byteLength(page.body, "utf8") };
-                    return value;
-                }
-                return null;
-            } catch (_) { return null; }
+    async function feedInPrice() {
+        if (!CFG.feedInEnabled) {
+            return { enabled: false, ct: null, eur: null, quarter: null, year: null, source: "deaktiviert", fallback: false, matched: null, foundPrices: 0, error: null, page: null };
         }
-        const [energy, grid, feed] = await Promise.all([
-            fetchAndParse(CFG.energyUrl, "energy"),
-            fetchAndParse(CFG.gridUrl, "grid"),
-            CFG.feedInEnabled ? fetchAndParse(CFG.feedInUrl, "feedIn") : Promise.resolve(null)
-        ]);
-        if (energy) cache.energy = energy;
-        if (grid) cache.grid = grid;
-        if (feed) cache.feedIn = feed;
-        flow.set(CACHE_KEY, cache);
+
+        let page = null;
+        let error = null;
+        try {
+            const loaded = await loadPage(CFG.feedInUrl);
+            page = loaded.page;
+            const found = findFeedIn(loaded.text);
+            if (found) return { ...found, page };
+            error = page.cookieWallDetected ? "Cookie-Seite statt Einspeiseseite erhalten" : "Preis nicht gefunden";
+        } catch (err) {
+            page = err.page || null;
+            error = err.message;
+        }
+
+        if (!CFG.allowFallback) throw new Error(`TIWAG PV-Einspeisung: ${error}`);
+        return {
+            enabled: true,
+            ct: round(CFG.feedInFallbackCt, 3),
+            eur: round(CFG.feedInFallbackCt / 100, 5),
+            quarter: null,
+            year: null,
+            source: "Fallback",
+            fallback: true,
+            matched: null,
+            foundPrices: 0,
+            error,
+            page
+        };
     }
 
-    const missing = [];
-    if (!cache.energy) missing.push("TIWAG Energie");
-    if (!cache.grid) missing.push("TINETZ Netz");
-    if (CFG.feedInEnabled && !cache.feedIn) missing.push("PV Einspeisung");
+    node.status({ fill: "blue", shape: "ring", text: "Strompreise werden geladen" });
 
-    if (incomingHtml && missing.length) {
-        node.status({ fill: "blue", shape: "ring", text: `warte auf: ${missing.join(", ")}` });
-        return [null, null, null, {
-            topic: "strompreis-details",
-            payload: {
-                mode: "incoming-html",
-                waitingFor: missing,
-                received: Object.keys(cache),
-                lastSource: explicitSource(msg.topic) || null
-            }
-        }];
-    }
-
-    function fallback(source) {
-        if (source === "energy") return { ct: round(CFG.energyFallbackCt, 3), source: "Fallback", fallback: true, error: "Kein gültiger TIWAG-Wert im Cache" };
-        if (source === "grid") return { ct: round(CFG.gridFallbackCt, 3), source: "Fallback", fallback: true, error: "Kein gültiger TINETZ-Wert im Cache" };
-        return { enabled: true, ct: round(CFG.feedInFallbackCt, 3), eur: round(CFG.feedInFallbackCt / 100, 5), quarter: null, year: null, source: "Fallback", fallback: true, error: "Kein gültiger PV-Wert im Cache", foundPrices: 0 };
-    }
-
-    if (!CFG.allowFallback && missing.length) {
-        throw new Error(`Strompreis: Daten fehlen: ${missing.join(", ")}`);
-    }
-
-    const energy = cache.energy || fallback("energy");
-    const grid = cache.grid || fallback("grid");
-    const feedIn = CFG.feedInEnabled ? (cache.feedIn || fallback("feedIn")) : { enabled: false, ct: null, eur: null, quarter: null, year: null, source: "deaktiviert", fallback: false };
+    const [energy, grid, feedIn] = await Promise.all([
+        energyPrice(),
+        gridPrice(),
+        feedInPrice()
+    ]);
 
     const energyCt = round(energy.ct, 3);
     const gridCt = round(grid.ct, 3);
     const extraCt = round(CFG.extraCtPerKwh, 3);
     const totalCt = round(energyCt + gridCt + extraCt, 3);
     const eur = round(totalCt / 100, 5);
-    const feedInCt = feedIn.enabled && Number.isFinite(feedIn.ct) ? round(feedIn.ct, 3) : null;
+    const feedInCt = feedIn.enabled && validPrice(feedIn.ct) ? round(feedIn.ct, 3) : null;
     const feedInEur = feedInCt !== null ? round(feedInCt / 100, 5) : null;
     const selfUseAdvantageCt = feedInCt !== null ? round(totalCt - feedInCt, 3) : null;
     const selfUseAdvantageEur = selfUseAdvantageCt !== null ? round(selfUseAdvantageCt / 100, 5) : null;
     const updated = new Date().toISOString();
-    const anyFallback = Boolean(energy.fallback || grid.fallback || (feedIn.enabled && feedIn.fallback));
+    const fallbackActive = Boolean(energy.fallback || grid.fallback || (feedIn.enabled && feedIn.fallback));
 
     flow.set("tiwag_energy_ct_kwh_gross", energyCt);
     flow.set("tinetz_net_ct_kwh", gridCt);
@@ -374,28 +386,53 @@ module.exports = async function run(ctx) {
         selfUseAdvantageCt,
         selfUseAdvantageEur,
         updated,
-        fallbackActive: anyFallback,
-        inputMode: incomingHtml ? "node-red-http" : "cache/internal-http",
-        energy: { ...energy, url: CFG.energyUrl, valueCt: energyCt },
-        grid: { ...grid, url: CFG.gridUrl, valueCt: gridCt },
-        feedIn: { ...feedIn, url: CFG.feedInUrl, valueCt: feedInCt, valueEur: feedInEur },
-        cache: {
-            energyReceivedAt: cache.energy && cache.energy.receivedAt || null,
-            gridReceivedAt: cache.grid && cache.grid.receivedAt || null,
-            feedInReceivedAt: cache.feedIn && cache.feedIn.receivedAt || null
+        fallbackActive,
+        inputMode: "ebst-http-v1.4",
+        energy: {
+            url: CFG.energyUrl,
+            valueCt: energyCt,
+            source: energy.source,
+            fallback: energy.fallback,
+            netCt: energy.netCt !== undefined ? energy.netCt : null,
+            matched: energy.matched || null,
+            error: energy.error || null,
+            page: energy.page || null
+        },
+        grid: {
+            url: CFG.gridUrl,
+            valueCt: gridCt,
+            source: grid.source,
+            fallback: grid.fallback,
+            matched: grid.matched || null,
+            error: grid.error || null,
+            page: grid.page || null
+        },
+        feedIn: {
+            enabled: feedIn.enabled,
+            url: CFG.feedInUrl,
+            valueCt: feedInCt,
+            valueEur: feedInEur,
+            quarter: feedIn.quarter,
+            year: feedIn.year,
+            source: feedIn.source,
+            fallback: feedIn.fallback,
+            matched: feedIn.matched || null,
+            foundPrices: feedIn.foundPrices || 0,
+            error: feedIn.error || null,
+            page: feedIn.page || null
         }
     };
 
     node.status({
-        fill: anyFallback ? "yellow" : "green",
-        shape: anyFallback ? "ring" : "dot",
-        text: `${totalCt} ct/kWh · PV ${feedInCt !== null ? feedInCt + " ct" : "aus"}${anyFallback ? " · Fallback" : ""}`
+        fill: fallbackActive ? "yellow" : "green",
+        shape: fallbackActive ? "ring" : "dot",
+        text: `${totalCt} ct/kWh · PV ${feedInCt !== null ? feedInCt + " ct" : "aus"}${fallbackActive ? " · Fallback" : ""}`
     });
 
     return [
-        { ...msg, topic: CFG.topicEur, payload: eur },
-        { ...msg, topic: CFG.topicCt, payload: totalCt },
-        { ...msg, topic: CFG.topicFeedInCt, payload: feedInCt },
+        { ...msg, payload: eur, topic: CFG.topicEur },
+        { ...msg, payload: totalCt, topic: CFG.topicCt },
+        feedIn.enabled ? { ...msg, payload: feedInCt, topic: CFG.topicFeedInCt } : null,
         { topic: "strompreis-details", payload: details }
     ];
 };
