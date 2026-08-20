@@ -3,6 +3,7 @@
 const path = require("path");
 const https = require("https");
 const { RemoteManager, DEFAULT_MANIFEST_URL, DEFAULT_INTERVAL_MS } = require("./lib/remote-manager");
+const { createHttpClient } = require("./lib/http-client");
 
 function fetchJson(url, redirects = 0) {
     return new Promise((resolve, reject) => {
@@ -17,7 +18,7 @@ function fetchJson(url, redirects = 0) {
 
         const req = https.get(url, {
             headers: {
-                "User-Agent": "EBST-NodeRED-Remote-Function/1.3.0",
+                "User-Agent": "EBST-NodeRED-Remote-Function/1.4.0",
                 "Accept": "application/json"
             },
             timeout: 15000
@@ -132,6 +133,10 @@ module.exports = function(RED) {
         node.functionId = config.functionId;
         node.name = config.name;
         node.functionConfig = parseFunctionConfig(config.functionConfig);
+        const httpClient = createHttpClient({
+            timeoutMs: Number(RED.settings.httpRequestTimeout) || 120000,
+            maxBodyBytes: 6 * 1024 * 1024
+        });
 
         if (node.functionConfig.stationIndex === undefined && config.stationIndex !== undefined && config.stationIndex !== null && String(config.stationIndex) !== "") {
             node.functionConfig.stationIndex = String(config.stationIndex);
@@ -193,6 +198,7 @@ module.exports = function(RED) {
                     flow: node.context().flow,
                     global: node.context().global,
                     RED,
+                    httpRequest: httpClient.request,
                     config: { ...node.functionConfig }
                 };
 
