@@ -56,9 +56,9 @@ module.exports = async function run(ctx) {
             .trim();
     }
 
-    function compileRegex(pattern, name) {
+    function compileRegex(pattern, name, flags = "i") {
         try {
-            return new RegExp(String(pattern || ""), "i");
+            return new RegExp(String(pattern || ""), flags);
         } catch (err) {
             throw new Error(`${name}: ungültiger regulärer Ausdruck: ${err.message}`);
         }
@@ -127,24 +127,36 @@ module.exports = async function run(ctx) {
     const CFG = {
         energyUrl: String(config.energyUrl || "https://www.tiwag.at/tutwas/").trim(),
         gridUrl: String(config.gridUrl || "https://www.tinetz.at/infobereich/allgemeines/netztarifaenderungen-ab-2026/").trim(),
+        feedInEnabled: b(config.feedInEnabled, true),
+        feedInUrl: String(config.feedInUrl || "https://www.tiwag.at/privat/photovoltaik/tiwag-pv-einspeisung/").trim(),
+
         energyFallbackCt: n(config.energyFallbackCt, 11.76),
         gridFallbackCt: n(config.gridFallbackCt, 8.66),
+        feedInFallbackCt: n(config.feedInFallbackCt, 8.29),
         extraCtPerKwh: n(config.extraCtPerKwh, 0),
         vatPercent: n(config.vatPercent, 20),
+
         energyGrossRegex: String(config.energyGrossRegex || "(\\d{1,2}[,.]\\d{1,3})\\s*(?:Cent|ct)\\s*\\/?\\s*kWh\\s*inkl\\.?\\s*USt"),
         energyNetRegex: String(config.energyNetRegex || "(\\d{1,2}[,.]\\d{1,3})\\s*(?:Cent|ct)\\s*\\/?\\s*kWh\\s*exkl\\.?\\s*USt"),
         gridRegex: String(config.gridRegex || "in\\s+Tirol[^.]{0,250}?lediglich\\s*(\\d{1,2}[,.]\\d{1,3})\\s*(?:Cent|ct)\\s*\\/?\\s*kWh"),
+        feedInRegex: String(config.feedInRegex || "Q([1-4])\\s*(\\d{4})[^\\d]{0,100}?(\\d{1,2}[,.]\\d{1,3})\\s*(?:Cent|ct)\\s*\\/?\\s*kWh"),
+
         allowFallback: b(config.allowFallback, true),
         timeoutSec: Math.max(3, Math.min(60, n(config.timeoutSec, 15))),
+
         topicEur: String(config.topicEur || "0_userdata.0.PV.Ersparnis.Strompreis_EUR_kWh"),
-        topicCt: String(config.topicCt || "0_userdata.0.PV.Ersparnis.Strompreis_ct_kWh")
+        topicCt: String(config.topicCt || "0_userdata.0.PV.Ersparnis.Strompreis_ct_kWh"),
+        topicFeedInCt: String(config.topicFeedInCt || "0_userdata.0.PV.Einspeisung.Strompreis_ct_kWh")
     };
 
     if (!CFG.energyUrl || !CFG.gridUrl) {
         throw new Error("Strompreis: Energie-URL und Netz-URL müssen gesetzt sein");
     }
-    if (!(CFG.energyFallbackCt > 0) || !(CFG.gridFallbackCt > 0)) {
-        throw new Error("Strompreis: Fallbackpreise müssen größer 0 sein");
+    if (CFG.feedInEnabled && !CFG.feedInUrl) {
+        throw new Error("Strompreis: Einspeise-URL muss gesetzt sein");
+    }
+    if (!(CFG.energyFallbackCt > 0) || !(CFG.gridFallbackCt > 0) || (CFG.feedInEnabled && !(CFG.feedInFallbackCt > 0))) {
+        throw new Error("Strompreis: aktiv verwendete Fallbackpreise müssen größer 0 sein");
     }
 
     const energyGrossRe = compileRegex(CFG.energyGrossRegex, "Energie brutto RegEx");
@@ -153,13 +165,11 @@ module.exports = async function run(ctx) {
     const timeoutMs = CFG.timeoutSec * 1000;
 
     async function getEnergyPrice() {
-        let html = "";
         let text = "";
         let fetchError = null;
 
         try {
-            html = await fetchText(CFG.energyUrl, timeoutMs);
-            text = htmlToText(html);
+            text = htmlToText(await fetchText(CFG.energyUrl, timeoutMs));
         } catch (err) {
             fetchError = err;
         }
@@ -209,13 +219,11 @@ module.exports = async function run(ctx) {
     }
 
     async function getGridPrice() {
-        let html = "";
         let text = "";
         let fetchError = null;
 
         try {
-            html = await fetchText(CFG.gridUrl, timeoutMs);
-            text = htmlToText(html);
+            text = htmlToText(await fetchText(CFG.gridUrl, timeoutMs));
         } catch (err) {
             fetchError = err;
         }
@@ -249,29 +257,145 @@ module.exports = async function run(ctx) {
         };
     }
 
+    async function getFeedInPrice() {
+        if (!CFG.feedInEnabled) {
+            return {
+                enabled: false,
+                ct: null,
+                source: "deaktiviert",
+                fallback: false,
+                quarter: null,
+                year: null
+            };
+        }
+
+        let text = "";
+        let fetchError = null;
+
+        try {
+            text = htmlToText(await fetchText(CFG.feedInUrl, timeoutMs));
+        } catch (err) {
+            fetchError = err;
+        }
+
+        if (!fetchError) {
+            const re = compileRegex(CFG.feedInRegex, "Einspeisung RegEx", "gi");
+            const rows = [];
+            let match;
+
+            while ((match = re.exec(text)) !== null) {
+                const quarter = Number(match[1]);
+                const year = Number(match[2]);
+                const ct = toNum(match[3]);
+
+                if (
+                    Number.isInteger(quarter) && quarter >= 1 && quarter <= 4 &&
+                    Number.isInteger(year) && year >= 2000 && year <= 2200 &&
+                    Number.isFinite(ct) && ct > 0 && ct <= 100
+                ) {
+                    rows.push({
+                        quarter,
+                        year,
+                        ct: round(ct, 3),
+                        matched: match[0]
+                    });
+                }
+
+                if (match[0] === "") re.lastIndex++;
+            }
+
+            if (rows.length) {
+                const now = new Date();
+                const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
+                const currentYear = now.getFullYear();
+                const currentKey = currentYear * 4 + currentQuarter;
+
+                let selected = rows.find(r => r.year === currentYear && r.quarter === currentQuarter);
+
+                if (!selected) {
+                    const notFuture = rows
+                        .filter(r => (r.year * 4 + r.quarter) <= currentKey)
+                        .sort((a, b) => (b.year * 4 + b.quarter) - (a.year * 4 + a.quarter));
+                    selected = notFuture[0] || rows
+                        .slice()
+                        .sort((a, b) => (b.year * 4 + b.quarter) - (a.year * 4 + a.quarter))[0];
+                }
+
+                return {
+                    enabled: true,
+                    ct: selected.ct,
+                    eur: round(selected.ct / 100, 5),
+                    source: selected.year === currentYear && selected.quarter === currentQuarter
+                        ? "Webseite aktuelles Quartal"
+                        : "Webseite neuester verfügbarer Quartalspreis",
+                    fallback: false,
+                    quarter: selected.quarter,
+                    year: selected.year,
+                    matched: selected.matched,
+                    foundPrices: rows.length
+                };
+            }
+        }
+
+        if (!CFG.allowFallback) {
+            throw new Error(fetchError
+                ? `TIWAG Einspeisung konnte nicht geladen werden: ${fetchError.message}`
+                : "TIWAG-Einspeisepreis konnte auf der Webseite nicht gefunden werden");
+        }
+
+        return {
+            enabled: true,
+            ct: round(CFG.feedInFallbackCt, 3),
+            eur: round(CFG.feedInFallbackCt / 100, 5),
+            source: "Fallback",
+            fallback: true,
+            quarter: null,
+            year: null,
+            error: fetchError ? fetchError.message : "Preis nicht gefunden"
+        };
+    }
+
     node.status({ fill: "blue", shape: "ring", text: "Preise werden geladen" });
 
-    const [energy, grid] = await Promise.all([getEnergyPrice(), getGridPrice()]);
+    const [energy, grid, feedIn] = await Promise.all([
+        getEnergyPrice(),
+        getGridPrice(),
+        getFeedInPrice()
+    ]);
 
     const energyCt = round(energy.ct, 3);
     const gridCt = round(grid.ct, 3);
     const extraCt = round(CFG.extraCtPerKwh, 3);
     const totalCt = round(energyCt + gridCt + extraCt, 3);
     const eur = round(totalCt / 100, 5);
+
+    const feedInCt = feedIn.enabled && Number.isFinite(feedIn.ct) ? round(feedIn.ct, 3) : null;
+    const feedInEur = feedInCt !== null ? round(feedInCt / 100, 5) : null;
+    const selfUseAdvantageCt = feedInCt !== null ? round(totalCt - feedInCt, 3) : null;
+    const selfUseAdvantageEur = selfUseAdvantageCt !== null ? round(selfUseAdvantageCt / 100, 5) : null;
+
     const updated = new Date().toISOString();
-    const anyFallback = energy.fallback || grid.fallback;
+    const anyFallback = Boolean(energy.fallback || grid.fallback || (feedIn.enabled && feedIn.fallback));
 
     flow.set("tiwag_energy_ct_kwh_gross", energyCt);
     flow.set("tinetz_net_ct_kwh", gridCt);
     flow.set("strompreis_ct_kwh", totalCt);
     flow.set("strompreis_eur_kwh", eur);
     flow.set("strompreis_last_update", updated);
+    flow.set("pv_einspeisung_ct_kwh", feedInCt);
+    flow.set("pv_einspeisung_eur_kwh", feedInEur);
+    flow.set("pv_eigenverbrauch_mehrwert_ct_kwh", selfUseAdvantageCt);
+    flow.set("pv_eigenverbrauch_mehrwert_eur_kwh", selfUseAdvantageEur);
 
     global.set("strompreis_tiwag_energy_ct_kwh_gross", energyCt);
     global.set("strompreis_tinetz_net_ct_kwh", gridCt);
     global.set("strompreis_ct_kwh", totalCt);
     global.set("strompreis_eur_kwh", eur);
     global.set("strompreis_last_update", updated);
+    global.set("pv_einspeisung_ct_kwh", feedInCt);
+    global.set("pv_einspeisung_eur_kwh", feedInEur);
+    global.set("pv_eigenverbrauch_mehrwert_ct_kwh", selfUseAdvantageCt);
+    global.set("pv_eigenverbrauch_mehrwert_eur_kwh", selfUseAdvantageEur);
 
     const details = {
         energyCt,
@@ -279,6 +403,10 @@ module.exports = async function run(ctx) {
         extraCt,
         totalCt,
         eur,
+        feedInCt,
+        feedInEur,
+        selfUseAdvantageCt,
+        selfUseAdvantageEur,
         updated,
         fallbackActive: anyFallback,
         energy: {
@@ -297,18 +425,34 @@ module.exports = async function run(ctx) {
             fallback: grid.fallback,
             matched: grid.matched || null,
             error: grid.error || null
+        },
+        feedIn: {
+            enabled: feedIn.enabled,
+            url: CFG.feedInUrl,
+            valueCt: feedInCt,
+            valueEur: feedInEur,
+            quarter: feedIn.quarter,
+            year: feedIn.year,
+            source: feedIn.source,
+            fallback: feedIn.fallback,
+            matched: feedIn.matched || null,
+            foundPrices: feedIn.foundPrices || 0,
+            error: feedIn.error || null
         }
     };
 
     node.status({
         fill: anyFallback ? "yellow" : "green",
         shape: anyFallback ? "ring" : "dot",
-        text: `${totalCt} ct/kWh = ${eur} €/kWh${anyFallback ? " · Fallback" : ""}`
+        text: feedInCt !== null
+            ? `${totalCt} ct Bezug · ${feedInCt} ct Einspeisung${anyFallback ? " · Fallback" : ""}`
+            : `${totalCt} ct/kWh Bezug${anyFallback ? " · Fallback" : ""}`
     });
 
     const msg1 = { ...msg, topic: CFG.topicEur, payload: eur };
     const msg2 = { ...msg, topic: CFG.topicCt, payload: totalCt };
-    const msg3 = { topic: "strompreis-details", payload: details };
+    const msg3 = { ...msg, topic: CFG.topicFeedInCt, payload: feedInCt };
+    const msg4 = { topic: "strompreis-details", payload: details };
 
-    return [msg1, msg2, msg3];
+    return [msg1, msg2, msg3, msg4];
 };
