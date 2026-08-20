@@ -219,6 +219,128 @@ global.Sonnenmittag
 
 ---
 
+## Astronomie – Sonne trifft Haus
+
+**Version:** 1.0.0  
+**Ausgänge:** 4  
+**Externe Bibliothek:** nicht erforderlich
+
+Berechnet für den eingestellten Standort, wann die Sonne erstmals das Haus trifft. Ein Sonnentreffer liegt vor, wenn der Sonnen-Azimut innerhalb des eingestellten Richtungsfensters liegt und gleichzeitig die eingestellte Mindest-Sonnenhöhe erreicht ist.
+
+Zusätzlich wird ein wetterabhängiges **Vorwarnfenster** vor der Erstbesonnung berechnet. Für die Wetterentscheidung ist ausschließlich `global.wettervorhersage` maßgeblich. `global.wetter_rain` und `global.wetter_sun` werden nur zur Diagnose angezeigt.
+
+### Wichtige Einstellungen
+
+Direkt im Node können eingestellt werden:
+
+```text
+Breitengrad
+Längengrad
+Azimut Start
+Azimut Ende
+Mindest-Sonnenhöhe
+Vorwarnzeit Standard
+Vorwarnzeit wolkenlos im Sommer
+Sommer Startmonat
+Sommer Endmonat
+Zeitzone
+Wetter erlauben (RegEx)
+Wetter blockieren (RegEx)
+Bei fehlender Wettervorhersage erlauben
+Scan-Auflösung
+```
+
+Azimut-Richtung:
+
+```text
+0°   = Nord
+90°  = Ost
+180° = Süd
+270° = West
+```
+
+### Ausgänge
+
+**Ausgang 1 – Vorwarnung**
+
+```text
+msg.payload
+```
+
+`true`, wenn das aktuelle Wetter freigegeben ist und sich die aktuelle Zeit innerhalb des berechneten Vorwarnfensters befindet. Andernfalls `false`.
+
+**Ausgang 2 – Diagnose**
+
+Wichtige Datenpunkte:
+
+```text
+msg.payload.result.active
+msg.payload.result.reason
+msg.payload.sunNow.azimuthDeg
+msg.payload.sunNow.elevationDeg
+msg.payload.firstHit.firstHitLocal
+msg.payload.firstHit.firstHitPreLocal
+msg.payload.weather.wettervorhersage
+msg.payload.weather.effectivePreMinutes
+```
+
+| Datenpunkt | Bedeutung |
+|---|---|
+| `msg.payload.result.reason` | Begründung für die aktuelle Entscheidung |
+| `msg.payload.sunNow.azimuthDeg` | aktueller Sonnen-Azimut in ° |
+| `msg.payload.sunNow.elevationDeg` | aktuelle Sonnenhöhe in ° |
+| `msg.payload.firstHit.firstHitLocal` | berechnete Erstbesonnung mit Datum und Uhrzeit |
+| `msg.payload.firstHit.firstHitPreLocal` | Beginn des aktuellen Vorwarnfensters |
+| `msg.payload.weather.wettervorhersage` | tatsächlich verwendete Wettervorhersage |
+| `msg.payload.weather.effectivePreMinutes` | aktuell verwendete Vorwarnzeit in Minuten |
+
+**Ausgang 3 – Sonnen-Azimut**
+
+```text
+msg.payload
+```
+
+Aktueller Sonnen-Azimut als Zahl von 0 bis 360°.
+
+**Ausgang 4 – Uhrzeit Erstbesonnung**
+
+```text
+msg.payload
+```
+
+Berechnete Uhrzeit der Erstbesonnung als `HH:MM`. Wenn an diesem Tag kein Sonnentreffer gefunden wird, ist der Wert `null`.
+
+### Benötigter Global-Wert
+
+```text
+global.wettervorhersage
+```
+
+Dieser Wert entscheidet über die Wetterfreigabe. Die Wetterfunktion kann beispielsweise **ORF Wetter Innsbruck** sein.
+
+Optional für die Diagnose:
+
+```text
+global.wetter_rain
+global.wetter_sun
+```
+
+### Neuberechnung erzwingen
+
+Normalerweise wird die Erstbesonnung einmal pro Tag bzw. automatisch nach einer Konfigurationsänderung neu berechnet. Eine Neuberechnung kann zusätzlich erzwungen werden mit:
+
+```text
+msg.topic = "recalc"
+```
+
+oder:
+
+```text
+msg.force = true
+```
+
+---
+
 ## Datenpunkte direkt im Node anzeigen
 
 Bei jeder Funktion zeigt der Node unter **Verfügbare Datenpunkte** an:
@@ -294,4 +416,3 @@ Jeder Beitrag hilft, die Kaffeemaschine am Laufen zu halten, damit wir alle prod
 [**Spende für Kaffee**](https://www.paypal.com/donate/?business=ACU26RPTCA44S&no_recurring=0&item_name=Dieses+Projekt+und+der+Service+kann+nur+durch+eure+Spenden+finanziert+werden.&currency_code=EUR)
 
 Vielen Dank für deine Unterstützung! 🙌
-
