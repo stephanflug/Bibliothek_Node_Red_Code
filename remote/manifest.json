@@ -16,17 +16,87 @@
       ],
       "settings": [],
       "dataPoints": [
-        {"output":1,"path":"msg.payload.location","label":"Ort","type":"string","description":"Ausgewerteter Ort der Wetterprognose."},
-        {"output":1,"path":"msg.payload.condition","label":"Wetterzustand","type":"string","description":"Aktueller Prognose-Wetterzustand, z. B. wolkenlos oder bedeckt."},
-        {"output":1,"path":"msg.payload.tmin_c","label":"Temperatur Minimum","type":"number","unit":"°C","description":"Prognostizierte minimale Tagestemperatur."},
-        {"output":1,"path":"msg.payload.tmax_c","label":"Temperatur Maximum","type":"number","unit":"°C","description":"Prognostizierte maximale Tagestemperatur."},
-        {"output":1,"path":"msg.payload.published","label":"Publikationsdatum","type":"string","description":"Von ORF erkannter Veröffentlichungstag, sofern vorhanden."},
-        {"output":1,"path":"msg.payload.parser_ok","label":"Parser Status","type":"boolean","description":"true, wenn die aktuelle ORF-Seite erfolgreich ausgewertet wurde."},
-        {"output":1,"path":"msg.payload.stale","label":"Alte Werte aktiv","type":"boolean","description":"true, wenn wegen eines Parserfehlers die letzten gültigen Werte verwendet werden."},
-        {"output":2,"path":"msg.payload","label":"Condition-Varianten JSON","type":"string","description":"JSON-Text mit allen bisher gefundenen unterschiedlichen Wetterzuständen."},
-        {"scope":"global","path":"global.wettervorhersage","label":"Wettervorhersage global","type":"string","description":"Aktuell gespeicherter Wetterzustand im globalen Node-RED-Kontext."},
-        {"scope":"global","path":"global.wetter_temp","label":"Temperatur Minimum global","type":"number","unit":"°C","description":"Global gespeicherte minimale Prognosetemperatur."},
-        {"scope":"global","path":"global.wetter_temp_Max","label":"Temperatur Maximum global","type":"number","unit":"°C","description":"Global gespeicherte maximale Prognosetemperatur."}
+        {
+          "output": 1,
+          "path": "msg.payload.location",
+          "label": "Ort",
+          "type": "string",
+          "description": "Ausgewerteter Ort der Wetterprognose."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.condition",
+          "label": "Wetterzustand",
+          "type": "string",
+          "description": "Aktueller Prognose-Wetterzustand, z. B. wolkenlos oder bedeckt."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.tmin_c",
+          "label": "Temperatur Minimum",
+          "type": "number",
+          "unit": "°C",
+          "description": "Prognostizierte minimale Tagestemperatur."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.tmax_c",
+          "label": "Temperatur Maximum",
+          "type": "number",
+          "unit": "°C",
+          "description": "Prognostizierte maximale Tagestemperatur."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.published",
+          "label": "Publikationsdatum",
+          "type": "string",
+          "description": "Von ORF erkannter Veröffentlichungstag, sofern vorhanden."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.parser_ok",
+          "label": "Parser Status",
+          "type": "boolean",
+          "description": "true, wenn die aktuelle ORF-Seite erfolgreich ausgewertet wurde."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.stale",
+          "label": "Alte Werte aktiv",
+          "type": "boolean",
+          "description": "true, wenn wegen eines Parserfehlers die letzten gültigen Werte verwendet werden."
+        },
+        {
+          "output": 2,
+          "path": "msg.payload",
+          "label": "Condition-Varianten JSON",
+          "type": "string",
+          "description": "JSON-Text mit allen bisher gefundenen unterschiedlichen Wetterzuständen."
+        },
+        {
+          "scope": "global",
+          "path": "global.wettervorhersage",
+          "label": "Wettervorhersage global",
+          "type": "string",
+          "description": "Aktuell gespeicherter Wetterzustand im globalen Node-RED-Kontext."
+        },
+        {
+          "scope": "global",
+          "path": "global.wetter_temp",
+          "label": "Temperatur Minimum global",
+          "type": "number",
+          "unit": "°C",
+          "description": "Global gespeicherte minimale Prognosetemperatur."
+        },
+        {
+          "scope": "global",
+          "path": "global.wetter_temp_Max",
+          "label": "Temperatur Maximum global",
+          "type": "number",
+          "unit": "°C",
+          "description": "Global gespeicherte maximale Prognosetemperatur."
+        }
       ]
     },
     "techweb-tirol-station": {
@@ -37,7 +107,9 @@
       "description": "Lädt aktuelle Messwerte einer auswählbaren Tiroler Wetterstation und setzt die bestehenden Wetter-Globalvariablen.",
       "localFile": "remote/functions/wetter/techweb-tirol-station.js",
       "outputs": 1,
-      "outputLabels": ["Wetterdaten"],
+      "outputLabels": [
+        "Wetterdaten"
+      ],
       "settings": [
         {
           "id": "stationIndex",
@@ -55,24 +127,130 @@
         }
       ],
       "dataPoints": [
-        {"output":1,"path":"msg.payload.station.location","label":"Stationsname","type":"string","description":"Name der ausgewählten Wetterstation."},
-        {"output":1,"path":"msg.payload.temperature","label":"Temperatur","type":"number","unit":"°C","description":"Aktuelle Temperatur der ausgewählten Station."},
-        {"output":1,"path":"msg.payload.humidity","label":"Relative Luftfeuchte","type":"number","unit":"%","description":"Aktuelle relative Luftfeuchte."},
-        {"output":1,"path":"msg.payload.sun_w","label":"Sonnenstrahlung","type":"number","unit":"W/m²","description":"Aktuell gemessene Sonnenstrahlung bzw. der verfügbare Sonnenwert."},
-        {"output":1,"path":"msg.payload.wind_speed","label":"Windgeschwindigkeit","type":"number","description":"Aktuelle Windgeschwindigkeit der Wetterstation."},
-        {"output":1,"path":"msg.payload.wind_direction","label":"Windrichtung","description":"Aktuelle Windrichtung der Wetterstation."},
-        {"output":1,"path":"msg.payload.rain_mm","label":"Niederschlag","type":"number","unit":"mm","description":"Aktueller Niederschlagswert."},
-        {"output":1,"path":"msg.payload.snow","label":"Schnee","type":"number","description":"Schneewert der Wetterstation, sofern von der API geliefert."},
-        {"output":1,"path":"msg.payload.airpressure","label":"Luftdruck","type":"number","description":"Luftdruck bzw. Luftdrucktrend gemäß Techweb-Daten."},
-        {"output":1,"path":"msg.payload.condition","label":"Ermittelter Wetterzustand","type":"string","description":"Aus Messwerten abgeleiteter Zustand wie sonnig, bewölkt, Regen oder Schnee."},
-        {"scope":"global","path":"global.wetter_temp","label":"Temperatur global","unit":"°C","description":"Global gespeicherte aktuelle Temperatur."},
-        {"scope":"global","path":"global.wetter_humidity","label":"Feuchte global","unit":"%","description":"Global gespeicherte relative Luftfeuchte."},
-        {"scope":"global","path":"global.wetter_sun","label":"Sonne global","description":"Global gespeicherter Sonnenwert."},
-        {"scope":"global","path":"global.wetter_rain","label":"Regen global","unit":"mm","description":"Global gespeicherter Niederschlagswert."},
-        {"scope":"global","path":"global.wetter_wind_Speed","label":"Windgeschwindigkeit global","description":"Global gespeicherte Windgeschwindigkeit."},
-        {"scope":"global","path":"global.wetter_wind_direction","label":"Windrichtung global","description":"Global gespeicherte Windrichtung."},
-        {"scope":"global","path":"global.wetter_Luftdruck","label":"Luftdruck global","description":"Global gespeicherter Luftdruckwert."},
-        {"scope":"global","path":"global.wetterzustand","label":"Wetterzustand global","description":"Global gespeicherter abgeleiteter Wetterzustand."}
+        {
+          "output": 1,
+          "path": "msg.payload.station.location",
+          "label": "Stationsname",
+          "type": "string",
+          "description": "Name der ausgewählten Wetterstation."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.temperature",
+          "label": "Temperatur",
+          "type": "number",
+          "unit": "°C",
+          "description": "Aktuelle Temperatur der ausgewählten Station."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.humidity",
+          "label": "Relative Luftfeuchte",
+          "type": "number",
+          "unit": "%",
+          "description": "Aktuelle relative Luftfeuchte."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.sun_w",
+          "label": "Sonnenstrahlung",
+          "type": "number",
+          "unit": "W/m²",
+          "description": "Aktuell gemessene Sonnenstrahlung bzw. der verfügbare Sonnenwert."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.wind_speed",
+          "label": "Windgeschwindigkeit",
+          "type": "number",
+          "description": "Aktuelle Windgeschwindigkeit der Wetterstation."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.wind_direction",
+          "label": "Windrichtung",
+          "description": "Aktuelle Windrichtung der Wetterstation."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.rain_mm",
+          "label": "Niederschlag",
+          "type": "number",
+          "unit": "mm",
+          "description": "Aktueller Niederschlagswert."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.snow",
+          "label": "Schnee",
+          "type": "number",
+          "description": "Schneewert der Wetterstation, sofern von der API geliefert."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.airpressure",
+          "label": "Luftdruck",
+          "type": "number",
+          "description": "Luftdruck bzw. Luftdrucktrend gemäß Techweb-Daten."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.condition",
+          "label": "Ermittelter Wetterzustand",
+          "type": "string",
+          "description": "Aus Messwerten abgeleiteter Zustand wie sonnig, bewölkt, Regen oder Schnee."
+        },
+        {
+          "scope": "global",
+          "path": "global.wetter_temp",
+          "label": "Temperatur global",
+          "unit": "°C",
+          "description": "Global gespeicherte aktuelle Temperatur."
+        },
+        {
+          "scope": "global",
+          "path": "global.wetter_humidity",
+          "label": "Feuchte global",
+          "unit": "%",
+          "description": "Global gespeicherte relative Luftfeuchte."
+        },
+        {
+          "scope": "global",
+          "path": "global.wetter_sun",
+          "label": "Sonne global",
+          "description": "Global gespeicherter Sonnenwert."
+        },
+        {
+          "scope": "global",
+          "path": "global.wetter_rain",
+          "label": "Regen global",
+          "unit": "mm",
+          "description": "Global gespeicherter Niederschlagswert."
+        },
+        {
+          "scope": "global",
+          "path": "global.wetter_wind_Speed",
+          "label": "Windgeschwindigkeit global",
+          "description": "Global gespeicherte Windgeschwindigkeit."
+        },
+        {
+          "scope": "global",
+          "path": "global.wetter_wind_direction",
+          "label": "Windrichtung global",
+          "description": "Global gespeicherte Windrichtung."
+        },
+        {
+          "scope": "global",
+          "path": "global.wetter_Luftdruck",
+          "label": "Luftdruck global",
+          "description": "Global gespeicherter Luftdruckwert."
+        },
+        {
+          "scope": "global",
+          "path": "global.wetterzustand",
+          "label": "Wetterzustand global",
+          "description": "Global gespeicherter abgeleiteter Wetterzustand."
+        }
       ]
     },
     "sonnenstand": {
@@ -83,24 +261,117 @@
       "description": "Berechnet Sonnenazimut, Sonnenhöhe, Sonnenaufgang, Sonnenuntergang und Sonnenmittag ohne externe Bibliothek.",
       "localFile": "remote/functions/astronomie/sonnenstand.js",
       "outputs": 1,
-      "outputLabels": ["Sonnenstand"],
+      "outputLabels": [
+        "Sonnenstand"
+      ],
       "settings": [
-        {"id":"latitude","label":"Breitengrad","type":"number","min":-90,"max":90,"step":0.000001,"required":true,"placeholder":"z. B. 47.2692","description":"Breitengrad des Standortes. Nord ist positiv, Süd negativ."},
-        {"id":"longitude","label":"Längengrad","type":"number","min":-180,"max":180,"step":0.000001,"required":true,"placeholder":"z. B. 11.4041","description":"Längengrad des Standortes. Ost ist positiv, West negativ."}
+        {
+          "id": "latitude",
+          "label": "Breitengrad",
+          "type": "number",
+          "min": -90,
+          "max": 90,
+          "step": 1e-06,
+          "required": true,
+          "placeholder": "z. B. 47.2692",
+          "description": "Breitengrad des Standortes. Nord ist positiv, Süd negativ."
+        },
+        {
+          "id": "longitude",
+          "label": "Längengrad",
+          "type": "number",
+          "min": -180,
+          "max": 180,
+          "step": 1e-06,
+          "required": true,
+          "placeholder": "z. B. 11.4041",
+          "description": "Längengrad des Standortes. Ost ist positiv, West negativ."
+        }
       ],
       "dataPoints": [
-        {"output":1,"path":"msg.payload.azimuthDegrees","label":"Sonnenwinkel / Azimut","type":"number","unit":"°","description":"Horizontale Richtung der Sonne: 0° = Nord, 90° = Ost, 180° = Süd, 270° = West."},
-        {"output":1,"path":"msg.payload.altitudeDegrees","label":"Sonnenhöhe","type":"number","unit":"°","description":"Winkel der Sonne über dem Horizont. Negative Werte bedeuten, dass die Sonne unter dem Horizont steht."},
-        {"output":1,"path":"msg.payload.isDay","label":"Tag / Nacht","type":"boolean","description":"true, wenn die Sonne rechnerisch über der Tag/Nacht-Grenze steht."},
-        {"output":1,"path":"msg.payload.times.sunrise.value","label":"Sonnenaufgang","type":"string","description":"Lokale Uhrzeit des Sonnenaufgangs."},
-        {"output":1,"path":"msg.payload.times.sunset.value","label":"Sonnenuntergang","type":"string","description":"Lokale Uhrzeit des Sonnenuntergangs."},
-        {"output":1,"path":"msg.payload.times.night.value","label":"Sonnenuntergang (kompatibel)","type":"string","description":"Kompatibler Pfad für bestehende Flows, entspricht dem Sonnenuntergang."},
-        {"output":1,"path":"msg.payload.times.solarNoon.value","label":"Sonnenmittag","type":"string","description":"Lokale Uhrzeit, zu der die Sonne ihren höchsten Tagesstand erreicht."},
-        {"scope":"global","path":"global.Sonnenwinkel","label":"Sonnenwinkel global","unit":"°","description":"Global gespeicherter Sonnenazimut."},
-        {"scope":"global","path":"global.Sonnenhoehe","label":"Sonnenhöhe global","unit":"°","description":"Global gespeicherte Sonnenhöhe."},
-        {"scope":"global","path":"global.Sonnenaufgang","label":"Sonnenaufgang global","description":"Global gespeicherte Sonnenaufgangszeit."},
-        {"scope":"global","path":"global.Sonnenuntergang","label":"Sonnenuntergang global","description":"Global gespeicherte Sonnenuntergangszeit."},
-        {"scope":"global","path":"global.Sonnenmittag","label":"Sonnenmittag global","description":"Global gespeicherte Sonnenmittagszeit."}
+        {
+          "output": 1,
+          "path": "msg.payload.azimuthDegrees",
+          "label": "Sonnenwinkel / Azimut",
+          "type": "number",
+          "unit": "°",
+          "description": "Horizontale Richtung der Sonne: 0° = Nord, 90° = Ost, 180° = Süd, 270° = West."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.altitudeDegrees",
+          "label": "Sonnenhöhe",
+          "type": "number",
+          "unit": "°",
+          "description": "Winkel der Sonne über dem Horizont. Negative Werte bedeuten, dass die Sonne unter dem Horizont steht."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.isDay",
+          "label": "Tag / Nacht",
+          "type": "boolean",
+          "description": "true, wenn die Sonne rechnerisch über der Tag/Nacht-Grenze steht."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.times.sunrise.value",
+          "label": "Sonnenaufgang",
+          "type": "string",
+          "description": "Lokale Uhrzeit des Sonnenaufgangs."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.times.sunset.value",
+          "label": "Sonnenuntergang",
+          "type": "string",
+          "description": "Lokale Uhrzeit des Sonnenuntergangs."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.times.night.value",
+          "label": "Sonnenuntergang (kompatibel)",
+          "type": "string",
+          "description": "Kompatibler Pfad für bestehende Flows, entspricht dem Sonnenuntergang."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.times.solarNoon.value",
+          "label": "Sonnenmittag",
+          "type": "string",
+          "description": "Lokale Uhrzeit, zu der die Sonne ihren höchsten Tagesstand erreicht."
+        },
+        {
+          "scope": "global",
+          "path": "global.Sonnenwinkel",
+          "label": "Sonnenwinkel global",
+          "unit": "°",
+          "description": "Global gespeicherter Sonnenazimut."
+        },
+        {
+          "scope": "global",
+          "path": "global.Sonnenhoehe",
+          "label": "Sonnenhöhe global",
+          "unit": "°",
+          "description": "Global gespeicherte Sonnenhöhe."
+        },
+        {
+          "scope": "global",
+          "path": "global.Sonnenaufgang",
+          "label": "Sonnenaufgang global",
+          "description": "Global gespeicherte Sonnenaufgangszeit."
+        },
+        {
+          "scope": "global",
+          "path": "global.Sonnenuntergang",
+          "label": "Sonnenuntergang global",
+          "description": "Global gespeicherte Sonnenuntergangszeit."
+        },
+        {
+          "scope": "global",
+          "path": "global.Sonnenmittag",
+          "label": "Sonnenmittag global",
+          "description": "Global gespeicherte Sonnenmittagszeit."
+        }
       ]
     },
     "sonne-trifft-haus": {
@@ -111,38 +382,593 @@
       "description": "Berechnet die tägliche Erstbesonnung eines Hauses aus Standort, Azimutfenster und Mindest-Sonnenhöhe und aktiviert wetterabhängig ein Vorwarnfenster vor dem ersten Sonnentreffer.",
       "localFile": "remote/functions/astronomie/sonne-trifft-haus.js",
       "outputs": 4,
-      "outputLabels": ["Vorwarnung", "Diagnose", "Sonnen-Azimut", "Erstbesonnung Uhrzeit"],
+      "outputLabels": [
+        "Vorwarnung",
+        "Diagnose",
+        "Sonnen-Azimut",
+        "Erstbesonnung Uhrzeit"
+      ],
       "settings": [
-        {"id":"latitude","label":"Breitengrad","type":"number","default":47.2794663,"min":-90,"max":90,"step":0.0000001,"required":true,"description":"Breitengrad des Gebäudestandorts."},
-        {"id":"longitude","label":"Längengrad","type":"number","default":10.7662632,"min":-180,"max":180,"step":0.0000001,"required":true,"description":"Längengrad des Gebäudestandorts."},
-        {"id":"azStart","label":"Azimut Start","type":"number","default":90,"min":0,"max":360,"step":0.1,"required":true,"unit":"°","description":"Beginn des Richtungsfensters, ab dem die Sonne das Haus treffen kann. 0° Nord, 90° Ost, 180° Süd, 270° West."},
-        {"id":"azEnd","label":"Azimut Ende","type":"number","default":152,"min":0,"max":360,"step":0.1,"required":true,"unit":"°","description":"Ende des Richtungsfensters. Ein Fenster über 360° wird unterstützt."},
-        {"id":"minAltDeg","label":"Mindest-Sonnenhöhe","type":"number","default":15,"min":-10,"max":90,"step":0.1,"required":true,"unit":"°","description":"Mindesthöhe der Sonne über dem Horizont. Bei Bergen oder Verschattung entsprechend erhöhen."},
-        {"id":"preMinutes","label":"Vorwarnzeit Standard","type":"number","default":180,"min":0,"max":1440,"step":1,"required":true,"unit":"min","description":"Standardzeit vor der berechneten Erstbesonnung, in der Ausgang 1 aktiv wird."},
-        {"id":"preMinutesWolkenlosSommer","label":"Vorwarnzeit wolkenlos im Sommer","type":"number","default":180,"min":0,"max":1440,"step":1,"required":true,"unit":"min","description":"Spezielle Vorwarnzeit bei exakt 'wolkenlos' innerhalb der definierten Sommermonate."},
-        {"id":"summerMonthStart","label":"Sommer Startmonat","type":"number","default":6,"min":1,"max":12,"step":1,"required":true,"description":"Erster Monat des Sommerzeitraums, 1=Jänner bis 12=Dezember."},
-        {"id":"summerMonthEnd","label":"Sommer Endmonat","type":"number","default":8,"min":1,"max":12,"step":1,"required":true,"description":"Letzter Monat des Sommerzeitraums. Bereiche über den Jahreswechsel werden unterstützt."},
-        {"id":"timeZone","label":"Zeitzone","type":"text","default":"Europe/Vienna","required":true,"description":"IANA-Zeitzone für Tagesgrenzen und lokale Uhrzeiten."},
-        {"id":"weatherAllowRegex","label":"Wetter erlauben (RegEx)","type":"text","default":"^(?:wolkenlos|sonnig|sonne|leicht[\\s-]+(?:bewölkt|bedeckt))$","required":true,"description":"Regulärer Ausdruck für Wetterzustände aus global.wettervorhersage, die Sonne erlauben."},
-        {"id":"weatherBlockRegex","label":"Wetter blockieren (RegEx)","type":"text","default":"niederschlag|regen|schauer|gewitter|stark[\\s-]+bewölkt|stark[\\s-]+bewoelkt","required":false,"description":"Regulärer Ausdruck für Zustände, die immer blockieren. Die Blockregel wird vor der Freigaberegel geprüft."},
-        {"id":"allowIfUnknown","label":"Bei fehlender Wettervorhersage erlauben","type":"boolean","default":false,"description":"Wenn aktiviert, darf das Vorwarnfenster auch ohne global.wettervorhersage aktiv werden."},
-        {"id":"scanStepMin","label":"Scan-Auflösung","type":"number","default":1,"min":1,"max":60,"step":1,"required":true,"unit":"min","description":"Zeitliche Auflösung für die tägliche Suche nach der ersten Besonnung. 1 Minute entspricht der bisherigen Berechnung."}
+        {
+          "id": "latitude",
+          "label": "Breitengrad",
+          "type": "number",
+          "default": 47.2794663,
+          "min": -90,
+          "max": 90,
+          "step": 1e-07,
+          "required": true,
+          "description": "Breitengrad des Gebäudestandorts."
+        },
+        {
+          "id": "longitude",
+          "label": "Längengrad",
+          "type": "number",
+          "default": 10.7662632,
+          "min": -180,
+          "max": 180,
+          "step": 1e-07,
+          "required": true,
+          "description": "Längengrad des Gebäudestandorts."
+        },
+        {
+          "id": "azStart",
+          "label": "Azimut Start",
+          "type": "number",
+          "default": 90,
+          "min": 0,
+          "max": 360,
+          "step": 0.1,
+          "required": true,
+          "unit": "°",
+          "description": "Beginn des Richtungsfensters, ab dem die Sonne das Haus treffen kann. 0° Nord, 90° Ost, 180° Süd, 270° West."
+        },
+        {
+          "id": "azEnd",
+          "label": "Azimut Ende",
+          "type": "number",
+          "default": 152,
+          "min": 0,
+          "max": 360,
+          "step": 0.1,
+          "required": true,
+          "unit": "°",
+          "description": "Ende des Richtungsfensters. Ein Fenster über 360° wird unterstützt."
+        },
+        {
+          "id": "minAltDeg",
+          "label": "Mindest-Sonnenhöhe",
+          "type": "number",
+          "default": 15,
+          "min": -10,
+          "max": 90,
+          "step": 0.1,
+          "required": true,
+          "unit": "°",
+          "description": "Mindesthöhe der Sonne über dem Horizont. Bei Bergen oder Verschattung entsprechend erhöhen."
+        },
+        {
+          "id": "preMinutes",
+          "label": "Vorwarnzeit Standard",
+          "type": "number",
+          "default": 180,
+          "min": 0,
+          "max": 1440,
+          "step": 1,
+          "required": true,
+          "unit": "min",
+          "description": "Standardzeit vor der berechneten Erstbesonnung, in der Ausgang 1 aktiv wird."
+        },
+        {
+          "id": "preMinutesWolkenlosSommer",
+          "label": "Vorwarnzeit wolkenlos im Sommer",
+          "type": "number",
+          "default": 180,
+          "min": 0,
+          "max": 1440,
+          "step": 1,
+          "required": true,
+          "unit": "min",
+          "description": "Spezielle Vorwarnzeit bei exakt 'wolkenlos' innerhalb der definierten Sommermonate."
+        },
+        {
+          "id": "summerMonthStart",
+          "label": "Sommer Startmonat",
+          "type": "number",
+          "default": 6,
+          "min": 1,
+          "max": 12,
+          "step": 1,
+          "required": true,
+          "description": "Erster Monat des Sommerzeitraums, 1=Jänner bis 12=Dezember."
+        },
+        {
+          "id": "summerMonthEnd",
+          "label": "Sommer Endmonat",
+          "type": "number",
+          "default": 8,
+          "min": 1,
+          "max": 12,
+          "step": 1,
+          "required": true,
+          "description": "Letzter Monat des Sommerzeitraums. Bereiche über den Jahreswechsel werden unterstützt."
+        },
+        {
+          "id": "timeZone",
+          "label": "Zeitzone",
+          "type": "text",
+          "default": "Europe/Vienna",
+          "required": true,
+          "description": "IANA-Zeitzone für Tagesgrenzen und lokale Uhrzeiten."
+        },
+        {
+          "id": "weatherAllowRegex",
+          "label": "Wetter erlauben (RegEx)",
+          "type": "text",
+          "default": "^(?:wolkenlos|sonnig|sonne|leicht[\\s-]+(?:bewölkt|bedeckt))$",
+          "required": true,
+          "description": "Regulärer Ausdruck für Wetterzustände aus global.wettervorhersage, die Sonne erlauben."
+        },
+        {
+          "id": "weatherBlockRegex",
+          "label": "Wetter blockieren (RegEx)",
+          "type": "text",
+          "default": "niederschlag|regen|schauer|gewitter|stark[\\s-]+bewölkt|stark[\\s-]+bewoelkt",
+          "required": false,
+          "description": "Regulärer Ausdruck für Zustände, die immer blockieren. Die Blockregel wird vor der Freigaberegel geprüft."
+        },
+        {
+          "id": "allowIfUnknown",
+          "label": "Bei fehlender Wettervorhersage erlauben",
+          "type": "boolean",
+          "default": false,
+          "description": "Wenn aktiviert, darf das Vorwarnfenster auch ohne global.wettervorhersage aktiv werden."
+        },
+        {
+          "id": "scanStepMin",
+          "label": "Scan-Auflösung",
+          "type": "number",
+          "default": 1,
+          "min": 1,
+          "max": 60,
+          "step": 1,
+          "required": true,
+          "unit": "min",
+          "description": "Zeitliche Auflösung für die tägliche Suche nach der ersten Besonnung. 1 Minute entspricht der bisherigen Berechnung."
+        }
       ],
       "dataPoints": [
-        {"output":1,"path":"msg.payload","label":"Vorwarnung aktiv","type":"boolean","description":"true während des wetterabhängigen Vorwarnfensters vor der Erstbesonnung, sonst false."},
-        {"output":2,"path":"msg.payload.result.active","label":"Vorwarnung Diagnose","type":"boolean","description":"Diagnosewert der aktuellen Vorwarnentscheidung."},
-        {"output":2,"path":"msg.payload.result.reason","label":"Entscheidungsgrund","type":"string","description":"Textbegründung, warum die Vorwarnung aktiv oder inaktiv ist."},
-        {"output":2,"path":"msg.payload.sunNow.azimuthDeg","label":"Aktueller Sonnen-Azimut","type":"number","unit":"°","description":"Aktuelle Sonnenrichtung innerhalb des Diagnoseobjekts."},
-        {"output":2,"path":"msg.payload.sunNow.elevationDeg","label":"Aktuelle Sonnenhöhe","type":"number","unit":"°","description":"Aktuelle Sonnenhöhe innerhalb des Diagnoseobjekts."},
-        {"output":2,"path":"msg.payload.firstHit.firstHitLocal","label":"Erstbesonnung Datum/Zeit","type":"string","description":"Berechneter erster Sonnentreffer des aktuellen Tages als lokale Datum/Zeit-Angabe."},
-        {"output":2,"path":"msg.payload.firstHit.firstHitPreLocal","label":"Beginn Vorwarnfenster","type":"string","description":"Lokaler Zeitpunkt, ab dem die Vorwarnung beginnen kann."},
-        {"output":2,"path":"msg.payload.weather.effectivePreMinutes","label":"Aktive Vorwarnzeit","type":"number","unit":"min","description":"Tatsächlich verwendete Vorwarnzeit nach Sommer-/Wolkenlos-Logik."},
-        {"output":2,"path":"msg.payload.weather.wettervorhersage","label":"Verwendete Wettervorhersage","type":"string","description":"Der zur Entscheidung verwendete Wert aus global.wettervorhersage."},
-        {"output":3,"path":"msg.payload","label":"Sonnen-Azimut","type":"number","unit":"°","description":"Aktueller Sonnen-Azimut als einzelner Zahlenwert 0 bis 360."},
-        {"output":4,"path":"msg.payload","label":"Uhrzeit Erstbesonnung","type":"string","description":"Berechnete Erstbesonnung als HH:MM oder null, wenn heute kein Treffer gefunden wird."},
-        {"scope":"global","path":"global.wettervorhersage","label":"Wettervorhersage Eingang","type":"string","description":"Entscheidender Wetterwert für das Wetter-Gate. Dieser Globalwert muss von einer Wetterfunktion bereitgestellt werden."},
-        {"scope":"global","path":"global.wetter_rain","label":"Regen Diagnose","type":"number","unit":"mm","description":"Optionaler Diagnosewert; beeinflusst die Entscheidung nicht."},
-        {"scope":"global","path":"global.wetter_sun","label":"Sonnenstrahlung Diagnose","type":"number","description":"Optionaler Diagnosewert; beeinflusst die Entscheidung nicht."}
+        {
+          "output": 1,
+          "path": "msg.payload",
+          "label": "Vorwarnung aktiv",
+          "type": "boolean",
+          "description": "true während des wetterabhängigen Vorwarnfensters vor der Erstbesonnung, sonst false."
+        },
+        {
+          "output": 2,
+          "path": "msg.payload.result.active",
+          "label": "Vorwarnung Diagnose",
+          "type": "boolean",
+          "description": "Diagnosewert der aktuellen Vorwarnentscheidung."
+        },
+        {
+          "output": 2,
+          "path": "msg.payload.result.reason",
+          "label": "Entscheidungsgrund",
+          "type": "string",
+          "description": "Textbegründung, warum die Vorwarnung aktiv oder inaktiv ist."
+        },
+        {
+          "output": 2,
+          "path": "msg.payload.sunNow.azimuthDeg",
+          "label": "Aktueller Sonnen-Azimut",
+          "type": "number",
+          "unit": "°",
+          "description": "Aktuelle Sonnenrichtung innerhalb des Diagnoseobjekts."
+        },
+        {
+          "output": 2,
+          "path": "msg.payload.sunNow.elevationDeg",
+          "label": "Aktuelle Sonnenhöhe",
+          "type": "number",
+          "unit": "°",
+          "description": "Aktuelle Sonnenhöhe innerhalb des Diagnoseobjekts."
+        },
+        {
+          "output": 2,
+          "path": "msg.payload.firstHit.firstHitLocal",
+          "label": "Erstbesonnung Datum/Zeit",
+          "type": "string",
+          "description": "Berechneter erster Sonnentreffer des aktuellen Tages als lokale Datum/Zeit-Angabe."
+        },
+        {
+          "output": 2,
+          "path": "msg.payload.firstHit.firstHitPreLocal",
+          "label": "Beginn Vorwarnfenster",
+          "type": "string",
+          "description": "Lokaler Zeitpunkt, ab dem die Vorwarnung beginnen kann."
+        },
+        {
+          "output": 2,
+          "path": "msg.payload.weather.effectivePreMinutes",
+          "label": "Aktive Vorwarnzeit",
+          "type": "number",
+          "unit": "min",
+          "description": "Tatsächlich verwendete Vorwarnzeit nach Sommer-/Wolkenlos-Logik."
+        },
+        {
+          "output": 2,
+          "path": "msg.payload.weather.wettervorhersage",
+          "label": "Verwendete Wettervorhersage",
+          "type": "string",
+          "description": "Der zur Entscheidung verwendete Wert aus global.wettervorhersage."
+        },
+        {
+          "output": 3,
+          "path": "msg.payload",
+          "label": "Sonnen-Azimut",
+          "type": "number",
+          "unit": "°",
+          "description": "Aktueller Sonnen-Azimut als einzelner Zahlenwert 0 bis 360."
+        },
+        {
+          "output": 4,
+          "path": "msg.payload",
+          "label": "Uhrzeit Erstbesonnung",
+          "type": "string",
+          "description": "Berechnete Erstbesonnung als HH:MM oder null, wenn heute kein Treffer gefunden wird."
+        },
+        {
+          "scope": "global",
+          "path": "global.wettervorhersage",
+          "label": "Wettervorhersage Eingang",
+          "type": "string",
+          "description": "Entscheidender Wetterwert für das Wetter-Gate. Dieser Globalwert muss von einer Wetterfunktion bereitgestellt werden."
+        },
+        {
+          "scope": "global",
+          "path": "global.wetter_rain",
+          "label": "Regen Diagnose",
+          "type": "number",
+          "unit": "mm",
+          "description": "Optionaler Diagnosewert; beeinflusst die Entscheidung nicht."
+        },
+        {
+          "scope": "global",
+          "path": "global.wetter_sun",
+          "label": "Sonnenstrahlung Diagnose",
+          "type": "number",
+          "description": "Optionaler Diagnosewert; beeinflusst die Entscheidung nicht."
+        }
+      ]
+    },
+    "strompreis-tiwag-tinetz": {
+      "name": "Strompreis TIWAG / TINETZ + PV Einspeisung",
+      "category": "Energie",
+      "version": "1.1.0",
+      "url": "https://raw.githubusercontent.com/stephanflug/Bibliothek_Node_Red_Code/main/remote/functions/energie/strompreis-tiwag-tinetz.js",
+      "description": "Lädt TIWAG-Arbeitspreis, TINETZ-Netzentgelt und den aktuellen TIWAG-PV-Einspeisepreis direkt von konfigurierbaren Webseiten. Berechnet Bezugspreis, Einspeisepreis und Mehrwert des Eigenverbrauchs.",
+      "localFile": "remote/functions/energie/strompreis-tiwag-tinetz.js",
+      "outputs": 4,
+      "outputLabels": [
+        "Bezug €/kWh",
+        "Bezug ct/kWh",
+        "PV Einspeisung ct/kWh",
+        "Details"
+      ],
+      "settings": [
+        {
+          "id": "energyUrl",
+          "label": "TIWAG Energie-Webseite",
+          "type": "text",
+          "default": "https://www.tiwag.at/tutwas/",
+          "required": true,
+          "description": "Webseite, aus der der TIWAG-Arbeitspreis gelesen wird. Bei einer neuen Tarifseite kann die URL hier angepasst werden."
+        },
+        {
+          "id": "gridUrl",
+          "label": "TINETZ Netz-Webseite",
+          "type": "text",
+          "default": "https://www.tinetz.at/infobereich/allgemeines/netztarifaenderungen-ab-2026/",
+          "required": true,
+          "description": "Webseite, aus der das TINETZ-Netzentgelt gelesen wird."
+        },
+        {
+          "id": "feedInEnabled",
+          "label": "PV-Einspeisung auswerten",
+          "type": "boolean",
+          "default": true,
+          "description": "Wenn aktiviert, wird zusätzlich der TIWAG-PV-Einspeisepreis geladen."
+        },
+        {
+          "id": "feedInUrl",
+          "label": "TIWAG Einspeise-Webseite",
+          "type": "text",
+          "default": "https://www.tiwag.at/privat/photovoltaik/tiwag-pv-einspeisung/",
+          "required": true,
+          "description": "Webseite mit den quartalsweisen TIWAG-Abnahmepreisen für PV-Einspeisung."
+        },
+        {
+          "id": "energyFallbackCt",
+          "label": "Fallback Energiepreis",
+          "type": "number",
+          "default": 11.76,
+          "min": 0.001,
+          "max": 100,
+          "step": 0.001,
+          "required": true,
+          "unit": "ct/kWh",
+          "description": "Ersatzwert für den TIWAG-Arbeitspreis, falls die Webseite nicht ausgewertet werden kann."
+        },
+        {
+          "id": "gridFallbackCt",
+          "label": "Fallback Netzentgelt",
+          "type": "number",
+          "default": 8.66,
+          "min": 0.001,
+          "max": 100,
+          "step": 0.001,
+          "required": true,
+          "unit": "ct/kWh",
+          "description": "Ersatzwert für das TINETZ-Netzentgelt."
+        },
+        {
+          "id": "feedInFallbackCt",
+          "label": "Fallback PV-Einspeisung",
+          "type": "number",
+          "default": 8.29,
+          "min": 0.001,
+          "max": 100,
+          "step": 0.001,
+          "required": true,
+          "unit": "ct/kWh",
+          "description": "Ersatzwert für den PV-Einspeisepreis, falls auf der Webseite kein Quartalspreis gefunden wird."
+        },
+        {
+          "id": "extraCtPerKwh",
+          "label": "Zusatzkosten pro kWh",
+          "type": "number",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "step": 0.001,
+          "required": true,
+          "unit": "ct/kWh",
+          "description": "Optionaler Zuschlag zum Bezugspreis. Fixkosten werden nicht automatisch eingerechnet."
+        },
+        {
+          "id": "vatPercent",
+          "label": "Umsatzsteuer Energie",
+          "type": "number",
+          "default": 20,
+          "min": 0,
+          "max": 100,
+          "step": 0.1,
+          "required": true,
+          "unit": "%",
+          "description": "Wird verwendet, wenn auf der TIWAG-Seite nur ein Netto-Arbeitspreis erkannt wird."
+        },
+        {
+          "id": "energyGrossRegex",
+          "label": "TIWAG Brutto-RegEx",
+          "type": "text",
+          "default": "(\\d{1,2}[,.]\\d{1,3})\\s*(?:Cent|ct)\\s*\\/?\\s*kWh\\s*inkl\\.?\\s*USt",
+          "required": true,
+          "description": "Suchmuster für einen TIWAG-Bruttopreis. Gruppe 1 muss den Zahlenwert enthalten."
+        },
+        {
+          "id": "energyNetRegex",
+          "label": "TIWAG Netto-RegEx",
+          "type": "text",
+          "default": "(\\d{1,2}[,.]\\d{1,3})\\s*(?:Cent|ct)\\s*\\/?\\s*kWh\\s*exkl\\.?\\s*USt",
+          "required": true,
+          "description": "Alternatives Suchmuster für einen Netto-Arbeitspreis. Gruppe 1 muss den Zahlenwert enthalten."
+        },
+        {
+          "id": "gridRegex",
+          "label": "TINETZ RegEx",
+          "type": "text",
+          "default": "in\\s+Tirol[^.]{0,250}?lediglich\\s*(\\d{1,2}[,.]\\d{1,3})\\s*(?:Cent|ct)\\s*\\/?\\s*kWh",
+          "required": true,
+          "description": "Suchmuster für das Netzentgelt. Gruppe 1 muss den Zahlenwert enthalten."
+        },
+        {
+          "id": "feedInRegex",
+          "label": "PV-Einspeisung RegEx",
+          "type": "text",
+          "default": "Q([1-4])\\s*(\\d{4})[^\\d]{0,100}?(\\d{1,2}[,.]\\d{1,3})\\s*(?:Cent|ct)\\s*\\/?\\s*kWh",
+          "required": true,
+          "description": "Suchmuster für Quartalspreise. Gruppe 1 = Quartal, Gruppe 2 = Jahr, Gruppe 3 = Preis in ct/kWh."
+        },
+        {
+          "id": "allowFallback",
+          "label": "Fallbackwerte verwenden",
+          "type": "boolean",
+          "default": true,
+          "description": "Wenn deaktiviert, führt ein fehlgeschlagener Seitenabruf oder Parser zu einem Fehler statt zu Ersatzwerten."
+        },
+        {
+          "id": "timeoutSec",
+          "label": "HTTP Timeout",
+          "type": "number",
+          "default": 15,
+          "min": 3,
+          "max": 60,
+          "step": 1,
+          "required": true,
+          "unit": "s",
+          "description": "Maximale Wartezeit je Webseite."
+        },
+        {
+          "id": "topicEur",
+          "label": "Topic Bezug €/kWh",
+          "type": "text",
+          "default": "0_userdata.0.PV.Ersparnis.Strompreis_EUR_kWh",
+          "required": true,
+          "description": "Topic von Ausgang 1."
+        },
+        {
+          "id": "topicCt",
+          "label": "Topic Bezug ct/kWh",
+          "type": "text",
+          "default": "0_userdata.0.PV.Ersparnis.Strompreis_ct_kWh",
+          "required": true,
+          "description": "Topic von Ausgang 2."
+        },
+        {
+          "id": "topicFeedInCt",
+          "label": "Topic PV Einspeisung",
+          "type": "text",
+          "default": "0_userdata.0.PV.Einspeisung.Strompreis_ct_kWh",
+          "required": true,
+          "description": "Topic von Ausgang 3."
+        }
+      ],
+      "dataPoints": [
+        {
+          "output": 1,
+          "path": "msg.payload",
+          "label": "Strombezug",
+          "type": "number",
+          "unit": "€/kWh",
+          "description": "Gesamtpreis für vermiedenen Netzbezug aus Energie + Netz + optionalem Zuschlag."
+        },
+        {
+          "output": 2,
+          "path": "msg.payload",
+          "label": "Strombezug",
+          "type": "number",
+          "unit": "ct/kWh",
+          "description": "Gesamtpreis für vermiedenen Netzbezug in Cent pro kWh."
+        },
+        {
+          "output": 3,
+          "path": "msg.payload",
+          "label": "PV-Einspeisepreis",
+          "type": "number",
+          "unit": "ct/kWh",
+          "description": "Aktueller erkannter TIWAG-Abnahmepreis für PV-Einspeisung; null wenn die Einspeiseauswertung deaktiviert ist."
+        },
+        {
+          "output": 4,
+          "path": "msg.payload.energyCt",
+          "label": "TIWAG Energiepreis",
+          "type": "number",
+          "unit": "ct/kWh",
+          "description": "Erkannter bzw. verwendeter TIWAG-Arbeitspreis brutto."
+        },
+        {
+          "output": 4,
+          "path": "msg.payload.gridCt",
+          "label": "TINETZ Netzentgelt",
+          "type": "number",
+          "unit": "ct/kWh",
+          "description": "Erkanntes bzw. verwendetes TINETZ-Netzentgelt."
+        },
+        {
+          "output": 4,
+          "path": "msg.payload.totalCt",
+          "label": "Bezug Gesamt",
+          "type": "number",
+          "unit": "ct/kWh",
+          "description": "Summe aus Energiepreis, Netzentgelt und optionalem Zuschlag."
+        },
+        {
+          "output": 4,
+          "path": "msg.payload.eur",
+          "label": "Bezug Gesamt",
+          "type": "number",
+          "unit": "€/kWh",
+          "description": "Gesamtpreis des Netzbezugs in Euro pro kWh."
+        },
+        {
+          "output": 4,
+          "path": "msg.payload.feedInCt",
+          "label": "PV Einspeisung",
+          "type": "number",
+          "unit": "ct/kWh",
+          "description": "Aktueller Einspeisepreis."
+        },
+        {
+          "output": 4,
+          "path": "msg.payload.feedInEur",
+          "label": "PV Einspeisung",
+          "type": "number",
+          "unit": "€/kWh",
+          "description": "Aktueller Einspeisepreis in Euro pro kWh."
+        },
+        {
+          "output": 4,
+          "path": "msg.payload.selfUseAdvantageCt",
+          "label": "Mehrwert Eigenverbrauch",
+          "type": "number",
+          "unit": "ct/kWh",
+          "description": "Differenz zwischen vermiedenem Netzbezug und Einspeisevergütung."
+        },
+        {
+          "output": 4,
+          "path": "msg.payload.feedIn.quarter",
+          "label": "Einspeise-Quartal",
+          "type": "number",
+          "description": "Quartal des verwendeten TIWAG-Abnahmepreises."
+        },
+        {
+          "output": 4,
+          "path": "msg.payload.feedIn.year",
+          "label": "Einspeise-Jahr",
+          "type": "number",
+          "description": "Jahr des verwendeten TIWAG-Abnahmepreises."
+        },
+        {
+          "output": 4,
+          "path": "msg.payload.fallbackActive",
+          "label": "Fallback aktiv",
+          "type": "boolean",
+          "description": "true, wenn mindestens einer der Preise aus einem Fallbackwert stammt."
+        },
+        {
+          "scope": "global",
+          "path": "global.strompreis_ct_kwh",
+          "label": "Strompreis global",
+          "unit": "ct/kWh",
+          "description": "Global gespeicherter Gesamt-Bezugspreis."
+        },
+        {
+          "scope": "global",
+          "path": "global.strompreis_eur_kwh",
+          "label": "Strompreis global",
+          "unit": "€/kWh",
+          "description": "Global gespeicherter Gesamt-Bezugspreis."
+        },
+        {
+          "scope": "global",
+          "path": "global.pv_einspeisung_ct_kwh",
+          "label": "PV Einspeisung global",
+          "unit": "ct/kWh",
+          "description": "Global gespeicherter Einspeisepreis."
+        },
+        {
+          "scope": "global",
+          "path": "global.pv_einspeisung_eur_kwh",
+          "label": "PV Einspeisung global",
+          "unit": "€/kWh",
+          "description": "Global gespeicherter Einspeisepreis."
+        },
+        {
+          "scope": "global",
+          "path": "global.pv_eigenverbrauch_mehrwert_ct_kwh",
+          "label": "Eigenverbrauch Mehrwert global",
+          "unit": "ct/kWh",
+          "description": "Global gespeicherte Differenz zwischen Bezugspreis und Einspeisepreis."
+        },
+        {
+          "scope": "global",
+          "path": "global.strompreis_last_update",
+          "label": "Letzte Aktualisierung global",
+          "type": "string",
+          "description": "ISO-Zeitstempel der letzten erfolgreichen Berechnung."
+        }
       ]
     }
   }
