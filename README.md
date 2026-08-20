@@ -19,6 +19,8 @@ Der Node **EBST Node Red Remote Funktion** stellt zentral gepflegte Funktionen d
 
 Ab **Basis-Version V1.3.0** können neue Funktionen, Einstellungen und Datenpunktbeschreibungen ergänzt werden, ohne den Basis-Node jedes Mal neu installieren zu müssen.
 
+Ab **Basis-Version V1.4.0** steht Remote-Funktionen zusätzlich ein integrierter HTTP-Client zur Verfügung. Dadurch können Funktionen Webseiten und APIs selbst laden, ohne dass separate Node-RED-`http request`-Nodes im Flow benötigt werden.
+
 ---
 
 ## Installation
@@ -26,14 +28,14 @@ Ab **Basis-Version V1.3.0** können neue Funktionen, Einstellungen und Datenpunk
 Aktuelles Installationspaket:
 
 ```text
-node-red-contrib-ebst-remote-function-1.3.0.tgz
+node-red-contrib-ebst-remote-function-1.4.0.tgz
 ```
 
 Installation im Node-RED-Benutzerverzeichnis:
 
 ```bash
 cd ~/.node-red
-npm install /pfad/node-red-contrib-ebst-remote-function-1.3.0.tgz
+npm install /pfad/node-red-contrib-ebst-remote-function-1.4.0.tgz
 ```
 
 Danach Node-RED einmal neu starten:
@@ -48,7 +50,7 @@ Anschließend steht in der Node-RED-Palette unter **Function** der Node
 
 zur Verfügung.
 
-> Nach der Installation von V1.3.0 ist für normale neue Funktionen oder Funktionsänderungen keine erneute Installation erforderlich.
+> Nach der Installation von V1.4.0 ist für normale neue Funktionen oder Funktionsänderungen keine erneute Installation erforderlich.
 
 ---
 
@@ -235,17 +237,24 @@ Ausgang 4 → Uhrzeit der Erstbesonnung
 
 ## Energie – Strompreis TIWAG / TINETZ + PV Einspeisung
 
-**Version:** 1.1.0  
+**Version:** 1.2.0  
 **Ausgänge:** 4  
-**Externe Bibliothek:** nicht erforderlich
+**Zusätzliche HTTP-Request-Nodes:** nicht erforderlich
 
-Diese Funktion ersetzt die separaten HTTP-Request- und Parser-Nodes für TIWAG und TINETZ.
+Diese Funktion ersetzt die separaten HTTP-Request- und Parser-Nodes für TIWAG und TINETZ. Ab **Basis V1.4.0** verwendet sie den fest eingebauten EBST-HTTP-Client mit Cookie- und Redirect-Unterstützung. Ein Inject direkt auf den EBST-Node reicht aus.
 
 Sie lädt selbstständig:
 
 - den TIWAG-Arbeitspreis
 - das TINETZ-Netzentgelt
 - den TIWAG-PV-Einspeisepreis
+
+Einfacher Flow:
+
+```text
+Inject → EBST Node Red Remote Funktion
+         Strompreis TIWAG / TINETZ + PV Einspeisung
+```
 
 und berechnet daraus:
 
@@ -419,7 +428,7 @@ Eine neue Basisversion ist nur erforderlich, wenn der grundlegende Mechanismus d
 
 ```text
 EBST Node Red Remote Funktion
-Basis-Version: V1.3.0
+Basis-Version: V1.4.0
 ```
 
 Die Remote-Funktionen besitzen unabhängig davon ihre eigene Versionsnummer.
