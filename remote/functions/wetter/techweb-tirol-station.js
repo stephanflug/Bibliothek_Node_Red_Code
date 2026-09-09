@@ -3,6 +3,7 @@
 module.exports = async function run(ctx) {
     const { msg, node, global, config = {} } = ctx;
     const SOURCE_URL = "https://cdn3.techweb.at/api/weather/at/data?province=tirol&format=json";
+    const VERSION = "1.2.0";
 
     function fetchJson(url, redirects = 0) {
         const https = require("https");
@@ -10,7 +11,7 @@ module.exports = async function run(ctx) {
             if (redirects > 5) return reject(new Error("Zu viele HTTP-Weiterleitungen"));
             const req = https.get(url, {
                 headers: {
-                    "User-Agent": "EBST-NodeRED-Remote-Function/1.1",
+                    "User-Agent": "EBST-NodeRED-Remote-Function/" + VERSION,
                     "Accept": "application/json"
                 },
                 timeout: 15000
@@ -51,6 +52,18 @@ module.exports = async function run(ctx) {
         return Number.isFinite(value)
             ? Math.round((value + Number.EPSILON) * 100) / 100
             : null;
+    }
+
+    function safeKey(value) {
+        return String(value || "")
+            .trim()
+            .replace(/[^A-Za-z0-9_]/g, "_")
+            .replace(/_+/g, "_")
+            .replace(/^_+|_+$/g, "");
+    }
+
+    function isPrimitive(value) {
+        return value === null || ["string", "number", "boolean"].includes(typeof value);
     }
 
     function getSelector() {
@@ -115,6 +128,9 @@ module.exports = async function run(ctx) {
     }
 
     const data = selected.station;
+    const stationNo = selected.index;
+    const stationPrefix = String(stationNo);
+
     const temperature = round2(number(data.temperature, NaN));
     const humidity = round2(number(data.humidity, NaN));
     const sun = round2(number(data.sun_w !== undefined ? data.sun_w : data.sun, 0));
@@ -153,25 +169,60 @@ module.exports = async function run(ctx) {
     global.set("wetter_wind_Speed", windSpeed);
     global.set("wetter_wind_direction", windDirection);
     global.set("wetter_Luftdruck", airpressure);
-    global.set("wetter_station", selected.index);
+    global.set("wetter_station", stationNo);
 
     const now = new Date().toISOString();
     global.set("wetter_station_aktuell", {
-        index: selected.index,
+        index: stationNo,
         station_id: data.station_id || null,
         location: data.location || null,
         updated_at: now
     });
 
+    const stationGlobals = {
+        wetterzustand: condition,
+        wetter_temp: temperature,
+        wetter_rain: rain,
+        wetter_sun: sun,
+        wetter_humidity: humidity,
+        wetter_snow: snow,
+        wetter_wind_Speed: windSpeed,
+        wetter_wind_direction: windDirection,
+        wetter_Luftdruck: airpressure,
+        wetter_station: stationNo,
+        wetter_station_id: data.station_id || null,
+        wetter_location: data.location || null,
+        wetter_state: data.state || data.province || null,
+        wetter_altitude: data.altitude !== undefined ? data.altitude : null,
+        wetter_time: data.weather_time || null,
+        wetter_timestamp: data.weather_timestamp || null,
+        wetter_updated_at: now
+    };
+
+    for (const [key, value] of Object.entries(stationGlobals)) {
+        global.set(stationPrefix + key, value);
+    }
+
+    for (const [key, value] of Object.entries(data)) {
+        if (!isPrimitive(value)) continue;
+        const cleanedKey = safeKey(key);
+        if (!cleanedKey) continue;
+        global.set(`${stationPrefix}wetter_${cleanedKey}`, value);
+    }
+
+    global.set(`${stationPrefix}wetter_raw`, data);
+
     msg.topic = "wetterdaten";
     msg.payload = {
         source: SOURCE_URL,
+        remote_function_version: VERSION,
         station: {
-            index: selected.index,
+            index: stationNo,
             station_id: data.station_id || null,
             location: data.location || null,
             state: data.state || data.province || null,
-            altitude: data.altitude !== undefined ? data.altitude : null
+            altitude: data.altitude !== undefined ? data.altitude : null,
+            global_prefix: stationPrefix
         },
         temperature,
         humidity,
@@ -184,13 +235,14 @@ module.exports = async function run(ctx) {
         condition,
         weather_time: data.weather_time || null,
         weather_timestamp: data.weather_timestamp || null,
+        station_globals: stationGlobals,
         updated_at: now
     };
 
     node.status({
         fill: "green",
         shape: "dot",
-        text: `${selected.index} · ${data.location || "Station"}: ${temperature} °C · ${condition}`
+        text: `${stationNo} · ${data.location || "Station"}: ${temperature} °C · ${condition}`
     });
 
     return msg;
