@@ -1,0 +1,61 @@
+name: EBST Heizgradtage-Funktion registrieren
+
+on:
+  push:
+    paths:
+      - ".github/workflows/register-heizgradtage-function.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Manifest aktualisieren
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const file = 'remote/manifest.json';
+          const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+          manifest.functions['heizgradtage-tirol-oesterreich'] = {
+            name: 'Heizgradtage Tirol / Österreich',
+            category: 'Heizung',
+            version: '1.0.0',
+            url: 'https://raw.githubusercontent.com/stephanflug/Bibliothek_Node_Red_Code/main/remote/functions/heizung/heizgradtage-tirol-oesterreich.js',
+            description: 'Berechnet aus laufenden Außentemperatur-Messungen das Tagesmittel sowie Heizgradtage nach HGT 20/12 für Europe/Vienna. Setzt die bestehenden Flow-Werte für Tagesmittel, Heizgradtage und Heiztag.',
+            localFile: 'remote/functions/heizung/heizgradtage-tirol-oesterreich.js',
+            outputs: 1,
+            outputLabels: ['Heizgradtage'],
+            settings: [],
+            dataPoints: [
+              {output:1,path:'msg.payload.datum',label:'Datum',type:'string',description:'Aktuelles Datum in Europe/Vienna.'},
+              {output:1,path:'msg.payload.standard',label:'HGT Standard',type:'string',description:'Verwendeter Standard HGT 20/12.'},
+              {output:1,path:'msg.payload.aussentemperaturAktuellC',label:'Außentemperatur aktuell',type:'number',unit:'°C',description:'Aktuell eingegangene Außentemperatur.'},
+              {output:1,path:'msg.payload.tagesmittelAussenC',label:'Tagesmittel Außentemperatur',type:'number',unit:'°C',description:'Laufendes arithmetisches Tagesmittel aller Messungen.'},
+              {output:1,path:'msg.payload.heizgradtageHeuteK',label:'Heizgradtage heute',type:'number',unit:'K',description:'HGT 20/12 für das bisherige Tagesmittel.'},
+              {output:1,path:'msg.payload.istHeiztagHGT',label:'Ist Heiztag',type:'boolean',description:'true wenn das Tagesmittel <= 12 °C ist.'},
+              {output:1,path:'msg.payload.heuteHeizenNoetig',label:'Heizen nötig',type:'boolean',description:'true wenn nach HGT 20/12 heute geheizt werden muss.'},
+              {output:1,path:'msg.payload.messungenHeute',label:'Messungen heute',type:'number',description:'Anzahl der heute berücksichtigten Temperaturmessungen.'},
+              {output:1,path:'msg.payload.minAussenC',label:'Minimum Außentemperatur',type:'number',unit:'°C',description:'Niedrigste bisherige Außentemperatur des Tages.'},
+              {output:1,path:'msg.payload.maxAussenC',label:'Maximum Außentemperatur',type:'number',unit:'°C',description:'Höchste bisherige Außentemperatur des Tages.'},
+              {output:1,path:'msg.payload.remote_function_version',label:'Remote-Version',type:'string',description:'Version der Remote-Funktion.'}
+            ]
+          };
+          fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + '\n');
+          NODE
+      - name: Änderung committen
+        run: |
+          if git diff --quiet -- remote/manifest.json; then
+            echo "Manifest bereits aktuell."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add remote/manifest.json
+          git commit -m "Heizgradtage-Funktion im EBST-Manifest registrieren"
+          git push
