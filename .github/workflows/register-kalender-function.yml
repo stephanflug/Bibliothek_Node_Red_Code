@@ -1,0 +1,59 @@
+name: EBST Kalenderfunktion registrieren
+
+on:
+  push:
+    paths:
+      - ".github/workflows/register-kalender-function.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Manifest aktualisieren
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const file = 'remote/manifest.json';
+          const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+          manifest.functions['feiertag-tirol-wochenende'] = {
+            name: 'Feiertag Tirol + Wochenende',
+            category: 'Kalender',
+            version: '1.0.0',
+            url: 'https://raw.githubusercontent.com/stephanflug/Bibliothek_Node_Red_Code/main/remote/functions/kalender/feiertag-tirol-wochenende.js',
+            description: 'Prüft Wochenende sowie gesetzliche und Tirol-spezifische Feiertage (AT-7) für Europe/Vienna. Lädt aktuelles und nächstes Jahr automatisch von Nager.Date und setzt die bestehenden Flow-Variablen.',
+            localFile: 'remote/functions/kalender/feiertag-tirol-wochenende.js',
+            outputs: 1,
+            outputLabels: ['Kalender Tirol'],
+            settings: [],
+            dataPoints: [
+              {output:1,path:'msg.payload.datum',label:'Datum',type:'string',description:'Heutiges Datum im Format TT.MM.JJJJ.'},
+              {output:1,path:'msg.payload.wochentagName',label:'Wochentag',type:'string',description:'Lokaler Wochentag in Europe/Vienna.'},
+              {output:1,path:'msg.payload.istWochenende',label:'Ist Wochenende',type:'boolean',description:'true bei Samstag oder Sonntag.'},
+              {output:1,path:'msg.payload.istFeiertagTirol',label:'Ist Feiertag Tirol',type:'boolean',description:'true bei österreichweitem oder Tirol-spezifischem Feiertag.'},
+              {output:1,path:'msg.payload.heutigerFeiertagTirol',label:'Heutiger Feiertag',type:'string',description:'Lokaler Name des heutigen Feiertags oder leer.'},
+              {output:1,path:'msg.payload.naechsterFeiertagTirol',label:'Nächster Feiertag',type:'string',description:'Name des nächsten für Tirol relevanten Feiertags.'},
+              {output:1,path:'msg.payload.datumNaechsterFeiertagTirol',label:'Datum nächster Feiertag',type:'string',description:'ISO-Datum des nächsten Feiertags.'},
+              {output:1,path:'msg.payload.tageBisNaechsterFeiertagTirol',label:'Tage bis Feiertag',type:'number',unit:'Tage',description:'Kalendertage bis zum nächsten Feiertag.'},
+              {output:1,path:'msg.payload.remote_function_version',label:'Remote-Version',type:'string',description:'Version der Remote-Funktion.'}
+            ]
+          };
+          fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + '\n');
+          NODE
+      - name: Änderung committen
+        run: |
+          if git diff --quiet -- remote/manifest.json; then
+            echo "Manifest bereits aktuell."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add remote/manifest.json
+          git commit -m "Kalenderfunktion im EBST-Manifest registrieren"
+          git push
