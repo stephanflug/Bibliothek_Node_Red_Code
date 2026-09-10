@@ -763,3 +763,67 @@ hx_KritischeOberflaeche_Kondensation_C
 hx_Oberflaechenfeuchte_pct
 hx_Kondensationsgefahr
 ```
+
+
+---
+
+## Heizung – Aufheizdauer berechnen
+
+**Version:** 1.0.0  
+**Ausgänge:** 1  
+**Persistenz über Node-RED-Neustart:** ja
+
+Berechnet die voraussichtliche Restzeit bis zu einer Zieltemperatur. Die Funktion verwendet die reale gemessene Aufheizrate und kann zusätzlich die Heizleistung aus dem Payload oder eine fest hinterlegte Leistung verwenden.
+
+### Eingang
+
+Beispiel mit aktueller Leistung:
+
+```json
+{
+  "temperature": 19.4,
+  "power": 5.2,
+  "heating": true
+}
+```
+
+Optional kann auch die Zieltemperatur im Payload mitgegeben werden:
+
+```json
+{
+  "temperature": 19.4,
+  "powerKw": 5.2,
+  "heating": true,
+  "targetTemperatureC": 22
+}
+```
+
+Wird keine Leistung im Payload geliefert, kann im EBST-Node eine feste Heizleistung hinterlegt werden.
+
+### Wichtige Ergebnisse
+
+```text
+msg.payload.temperatureC
+msg.payload.targetTemperatureC
+msg.payload.heatingActive
+msg.payload.powerKw
+msg.payload.temperatureRiseRateKPerHour
+msg.payload.remainingMinutes
+msg.payload.remainingHours
+msg.payload.estimatedMinutesIfHeating
+msg.payload.estimatedTargetTimeLocal
+msg.payload.targetReached
+msg.payload.calculationMethod
+msg.payload.model.learnedThermalCapacityKwhPerK
+msg.payload.status
+```
+
+Während einer aktiven Aufheizung lernt die Funktion aus Temperaturänderung, Zeit und Leistung die reale Anlage. Nach ausreichender Messzeit wird bevorzugt die tatsächlich gemessene Aufheizrate für die Restzeit verwendet.
+
+Der Lernzustand wird gespeichert unter:
+
+```text
+<Node-RED-userDir>/.ebst-remote-functions/state/aufheizdauer-berechnung.json
+```
+
+Dadurch bleiben Lernwerte nach einem Node-RED-Neustart erhalten.

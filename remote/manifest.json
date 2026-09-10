@@ -1654,6 +1654,302 @@
           "description": "Global gespeicherte Schimmel-Screeningentscheidung."
         }
       ]
+    },
+    "aufheizdauer-berechnung": {
+      "name": "Aufheizdauer berechnen",
+      "category": "Heizung",
+      "version": "1.0.0",
+      "url": "https://raw.githubusercontent.com/stephanflug/Bibliothek_Node_Red_Code/main/remote/functions/heizung/aufheizdauer-berechnung.js",
+      "description": "Berechnet aus aktueller Temperatur, Aufheizstatus und aktueller oder fest hinterlegter Heizleistung die voraussichtliche Rest-Aufheizdauer bis zur Zieltemperatur. Lernt die reale Aufheizcharakteristik und speichert den Lernzustand persistent über Node-RED-Neustarts.",
+      "localFile": "remote/functions/heizung/aufheizdauer-berechnung.js",
+      "outputs": 1,
+      "outputLabels": [
+        "Aufheizdauer"
+      ],
+      "settings": [
+        {
+          "id": "targetTemperatureC",
+          "label": "Zieltemperatur",
+          "type": "number",
+          "default": 22,
+          "min": -50,
+          "max": 120,
+          "step": 0.1,
+          "required": true,
+          "unit": "°C",
+          "description": "Zieltemperatur. Ein Zielwert im msg.payload überschreibt diese Einstellung."
+        },
+        {
+          "id": "powerMode",
+          "label": "Leistungsquelle",
+          "type": "select",
+          "default": "auto",
+          "required": true,
+          "options": [
+            {
+              "value": "auto",
+              "label": "Payload, sonst feste Leistung"
+            },
+            {
+              "value": "payload",
+              "label": "Nur Leistung aus Payload"
+            },
+            {
+              "value": "fixed",
+              "label": "Nur feste Leistung"
+            }
+          ],
+          "description": "Legt fest, woher die aktuelle Heizleistung verwendet wird."
+        },
+        {
+          "id": "payloadPowerUnit",
+          "label": "Einheit generische Payload-Leistung",
+          "type": "select",
+          "default": "kW",
+          "required": true,
+          "options": [
+            {
+              "value": "kW",
+              "label": "kW"
+            },
+            {
+              "value": "W",
+              "label": "W"
+            }
+          ],
+          "description": "Einheit für generische Felder power/leistung. Felder powerW/leistungW werden immer als Watt erkannt."
+        },
+        {
+          "id": "fixedPowerKw",
+          "label": "Feste Heizleistung",
+          "type": "number",
+          "default": 5,
+          "min": 0,
+          "max": 10000,
+          "step": 0.01,
+          "required": true,
+          "unit": "kW",
+          "description": "Feste Leistung bei Leistungsquelle „fest“ oder als Fallback bei „auto“."
+        },
+        {
+          "id": "thermalCapacityKwhPerK",
+          "label": "Thermische Kapazität",
+          "type": "number",
+          "default": 0,
+          "min": 0,
+          "max": 10000,
+          "step": 0.01,
+          "required": true,
+          "unit": "kWh/K",
+          "description": "Optionaler Start-/Fallbackwert. 0 = nicht vorgeben; die Funktion lernt aus realen Aufheizungen."
+        },
+        {
+          "id": "minLearningMinutes",
+          "label": "Min. Lernzeit",
+          "type": "number",
+          "default": 10,
+          "min": 1,
+          "max": 1440,
+          "step": 1,
+          "required": true,
+          "unit": "min",
+          "description": "Mindestdauer für eine belastbare gemessene Aufheizrate."
+        },
+        {
+          "id": "minTempRiseK",
+          "label": "Min. Temperaturanstieg",
+          "type": "number",
+          "default": 0.2,
+          "min": 0.05,
+          "max": 20,
+          "step": 0.05,
+          "required": true,
+          "unit": "K",
+          "description": "Mindestanstieg, bevor ein Lernwert übernommen wird."
+        },
+        {
+          "id": "measurementWindowMinutes",
+          "label": "Messfenster Aufheizrate",
+          "type": "number",
+          "default": 60,
+          "min": 1,
+          "max": 1440,
+          "step": 1,
+          "required": true,
+          "unit": "min",
+          "description": "Zeitfenster für die lineare Berechnung der realen Temperaturanstiegsgeschwindigkeit."
+        },
+        {
+          "id": "maxGapMinutes",
+          "label": "Max. Messlücke",
+          "type": "number",
+          "default": 30,
+          "min": 1,
+          "max": 1440,
+          "step": 1,
+          "required": true,
+          "unit": "min",
+          "description": "Größere Datenlücken starten einen neuen Aufheizzyklus."
+        },
+        {
+          "id": "smoothingAlpha",
+          "label": "Lernfaktor",
+          "type": "number",
+          "default": 0.25,
+          "min": 0.01,
+          "max": 1,
+          "step": 0.01,
+          "required": true,
+          "description": "Gewichtung neuer Lernwerte für die thermische Kapazität."
+        },
+        {
+          "id": "targetToleranceK",
+          "label": "Zieltoleranz",
+          "type": "number",
+          "default": 0.1,
+          "min": 0,
+          "max": 10,
+          "step": 0.05,
+          "required": true,
+          "unit": "K",
+          "description": "Toleranz für die Meldung Zieltemperatur erreicht."
+        },
+        {
+          "id": "persistMinSeconds",
+          "label": "Persistenz Mindestabstand",
+          "type": "number",
+          "default": 10,
+          "min": 0,
+          "max": 3600,
+          "step": 1,
+          "required": true,
+          "unit": "s",
+          "description": "Mindestabstand zwischen Schreibvorgängen der Zustandsdatei. 0 = bei jedem Lauf."
+        }
+      ],
+      "dataPoints": [
+        {
+          "output": 1,
+          "path": "msg.payload.temperatureC",
+          "label": "Aktuelle Temperatur",
+          "type": "number",
+          "unit": "°C",
+          "description": "Aktuelle gemessene Temperatur."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.targetTemperatureC",
+          "label": "Zieltemperatur",
+          "type": "number",
+          "unit": "°C",
+          "description": "Verwendete Zieltemperatur."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.heatingActive",
+          "label": "Aufheizung aktiv",
+          "type": "boolean",
+          "description": "Aktueller Aufheizstatus aus msg.payload."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.powerKw",
+          "label": "Heizleistung",
+          "type": "number",
+          "unit": "kW",
+          "description": "Verwendete aktuelle oder feste Heizleistung."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.temperatureRiseRateKPerHour",
+          "label": "Aufheizrate",
+          "type": "number",
+          "unit": "K/h",
+          "description": "Für die Prognose verwendete Temperaturanstiegsrate."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.remainingMinutes",
+          "label": "Rest-Aufheizdauer",
+          "type": "number",
+          "unit": "min",
+          "description": "Restdauer bis Ziel, wenn Aufheizung aktiv ist."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.estimatedMinutesIfHeating",
+          "label": "Prognose bei Aufheizung",
+          "type": "number",
+          "unit": "min",
+          "description": "Geschätzte Dauer bis Ziel auch bei aktuell ausgeschalteter Aufheizung, sofern ein Modell vorhanden ist."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.estimatedTargetTimeLocal",
+          "label": "Voraussichtliche Zielzeit",
+          "type": "string",
+          "description": "Lokaler geschätzter Zeitpunkt der Zieltemperatur."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.targetReached",
+          "label": "Ziel erreicht",
+          "type": "boolean",
+          "description": "true, wenn Zieltemperatur innerhalb der Toleranz erreicht ist."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.calculationMethod",
+          "label": "Berechnungsmethode",
+          "type": "string",
+          "description": "Gemessene Aufheizrate, gelernte oder hinterlegte thermische Kapazität."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.model.learnedThermalCapacityKwhPerK",
+          "label": "Gelernte thermische Kapazität",
+          "type": "number",
+          "unit": "kWh/K",
+          "description": "Aus realen Aufheizvorgängen gelernter effektiver Wert."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.status",
+          "label": "Status",
+          "type": "string",
+          "description": "Aktueller Zustand der Berechnung."
+        },
+        {
+          "scope": "global",
+          "path": "global.Aufheizdauer_Rest_min",
+          "label": "Restdauer global",
+          "type": "number",
+          "unit": "min",
+          "description": "Global gespeicherte Rest-Aufheizdauer."
+        },
+        {
+          "scope": "global",
+          "path": "global.Aufheizdauer_Rate_K_h",
+          "label": "Aufheizrate global",
+          "type": "number",
+          "unit": "K/h",
+          "description": "Global gespeicherte verwendete Aufheizrate."
+        },
+        {
+          "scope": "global",
+          "path": "global.Aufheizdauer_Aktiv",
+          "label": "Aufheizung aktiv global",
+          "type": "boolean",
+          "description": "Global gespeicherter Aufheizstatus."
+        },
+        {
+          "scope": "global",
+          "path": "global.Aufheizdauer_Zielzeit_Lokal",
+          "label": "Zielzeit global",
+          "type": "string",
+          "description": "Global gespeicherte geschätzte Zielzeit."
+        }
+      ]
     }
   }
 }
