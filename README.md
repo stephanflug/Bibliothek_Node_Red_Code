@@ -431,23 +431,6 @@ EBST Node Red Remote Funktion
 Basis-Version: V1.4.0
 ```
 
-Die Remote-Funktionen besitzen unabhängig davon ihre eigene Versionsnummer.
-
-### ☕ Unterstütze das Büro-Kaffeekonto!
-
-Damit der Kaffee im Büro nie ausgeht und die Entwicklung weiter auf Hochtouren läuft, freuen wir uns über eine kleine Unterstützung. ☕💻
-
-Jeder Beitrag hilft dabei, die Kaffeemaschine am Laufen zu halten und sorgt für genügend Energie für neue Ideen, Funktionen und Updates.
-
-[![PayPal](https://img.shields.io/badge/PayPal-Kaffee%20spendieren-0070BA?logo=paypal\&logoColor=white)](https://paypal.me/stephanflug)
-
-**☕ [Kaffee via PayPal spendieren](https://paypal.me/stephanflug)**
-
-Vielen Dank für deine Unterstützung! ❤️
-
-
----
-
 ## Kalender – Feiertag Tirol + Wochenende
 
 **Version:** 1.0.0  
@@ -670,3 +653,20 @@ msg.payload.pumps
 msg.payload.total
 msg.payload.persistence
 ```
+
+
+Die Remote-Funktionen besitzen unabhängig davon ihre eigene Versionsnummer.
+
+### ☕ Unterstütze das Büro-Kaffeekonto!
+
+Damit der Kaffee im Büro nie ausgeht und die Entwicklung weiter auf Hochtouren läuft, freuen wir uns über eine kleine Unterstützung. ☕💻
+
+Jeder Beitrag hilft dabei, die Kaffeemaschine am Laufen zu halten und sorgt für genügend Energie für neue Ideen, Funktionen und Updates.
+
+[![PayPal](https://img.shields.io/badge/PayPal-Kaffee%20spendieren-0070BA?logo=paypal\&logoColor=white)](https://paypal.me/stephanflug)
+
+**☕ [Kaffee via PayPal spendieren](https://paypal.me/stephanflug)**
+
+Vielen Dank für deine Unterstützung! ❤️
+
+
