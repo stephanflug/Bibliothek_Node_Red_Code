@@ -1,5 +1,3 @@
-Die Remote-Funktionen besitzen unabhängig davon ihre eigene Versionsnummer.
-
 ### ☕ Unterstütze das Büro-Kaffeekonto!
 
 Damit der Kaffee im Büro nie ausgeht und die Entwicklung weiter auf Hochtouren läuft, freuen wir uns über eine kleine Unterstützung. ☕💻
