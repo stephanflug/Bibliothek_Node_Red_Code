@@ -1174,6 +1174,193 @@
           "description": "Version der Remote-Funktion."
         }
       ]
+    },
+    "cop-jaz-waermepumpen": {
+      "name": "COP / Jahresarbeitszahl Wärmepumpen",
+      "category": "Heizung",
+      "version": "1.0.0",
+      "url": "https://raw.githubusercontent.com/stephanflug/Bibliothek_Node_Red_Code/main/remote/functions/heizung/cop-jaz-waermepumpen.js",
+      "description": "Berechnet aktuellen COP und Jahresarbeitszahl (JAZ) für eine oder mehrere Wärmepumpen. Gesamtwerte werden korrekt über Leistungs- bzw. Energiesummen gebildet. Jahreszustände werden zusätzlich persistent im Node-RED-Userverzeichnis gespeichert und nach einem Neustart wieder geladen.",
+      "localFile": "remote/functions/heizung/cop-jaz-waermepumpen.js",
+      "outputs": 1,
+      "outputLabels": [
+        "COP / JAZ Wärmepumpen"
+      ],
+      "settings": [
+        {
+          "id": "selectionMode",
+          "label": "Wärmepumpen Auswahl",
+          "type": "select",
+          "default": "all",
+          "required": true,
+          "options": [
+            {
+              "value": "all",
+              "label": "Alle Wärmepumpen aus msg.payload"
+            },
+            {
+              "value": "selected",
+              "label": "Nur ausgewählte Wärmepumpen"
+            }
+          ],
+          "description": "Legt fest, ob alle gelieferten Wärmepumpen oder nur bestimmte IDs ausgewertet werden."
+        },
+        {
+          "id": "selectedIds",
+          "label": "Ausgewählte WP-IDs",
+          "type": "text",
+          "default": "WP1",
+          "required": false,
+          "placeholder": "WP1,WP2",
+          "description": "Kommagetrennte IDs, z. B. WP1,WP2. Wird nur bei „Nur ausgewählte Wärmepumpen“ verwendet."
+        },
+        {
+          "id": "maxIntegrationMinutes",
+          "label": "Max. Integrationsabstand",
+          "type": "number",
+          "default": 60,
+          "min": 1,
+          "max": 1440,
+          "step": 1,
+          "required": true,
+          "unit": "min",
+          "description": "Maximaler Zeitabstand, über den Leistungen zu kWh integriert werden. Größere Lücken werden nicht hochgerechnet."
+        },
+        {
+          "id": "persistMinSeconds",
+          "label": "Persistenz Mindestabstand",
+          "type": "number",
+          "default": 5,
+          "min": 0,
+          "max": 3600,
+          "step": 1,
+          "required": true,
+          "unit": "s",
+          "description": "Mindestabstand zwischen Schreibvorgängen der persistenten Zustandsdatei. 0 speichert bei jedem Lauf."
+        }
+      ],
+      "dataPoints": [
+        {
+          "output": 1,
+          "path": "msg.payload.pumps",
+          "label": "Wärmepumpen Ergebnisse",
+          "type": "array",
+          "description": "Einzelergebnisse jeder ausgewerteten Wärmepumpe mit COP, JAZ, Leistung und Jahresenergie."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.total.cop",
+          "label": "COP Gesamt",
+          "type": "number",
+          "description": "Gesamt-COP aus Summe Wärmeleistung / Summe elektrische Leistung."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.total.jaz",
+          "label": "JAZ Gesamt",
+          "type": "number",
+          "description": "Gesamt-JAZ aus Summe Jahreswärme / Summe Jahresstrom."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.total.thermalPowerKw",
+          "label": "Wärmeleistung Gesamt",
+          "type": "number",
+          "unit": "kW",
+          "description": "Summe der aktuellen Wärmeleistungen."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.total.electricalPowerKw",
+          "label": "Elektrische Leistung Gesamt",
+          "type": "number",
+          "unit": "kW",
+          "description": "Summe der aktuellen elektrischen Leistungen."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.total.yearHeatKwh",
+          "label": "Jahreswärme Gesamt",
+          "type": "number",
+          "unit": "kWh",
+          "description": "Summierte abgegebene Wärmemenge des aktuellen Jahres."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.total.yearElectricKwh",
+          "label": "Jahresstrom Gesamt",
+          "type": "number",
+          "unit": "kWh",
+          "description": "Summierte elektrische Energie des aktuellen Jahres."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.persistence.active",
+          "label": "Persistenz aktiv",
+          "type": "boolean",
+          "description": "true: interner Zustand wird zusätzlich als JSON-Datei gespeichert."
+        },
+        {
+          "scope": "global",
+          "path": "global.<WP-ID>_COP",
+          "label": "COP je Wärmepumpe",
+          "type": "number",
+          "description": "Beispiel: global.WP1_COP."
+        },
+        {
+          "scope": "global",
+          "path": "global.<WP-ID>_JAZ",
+          "label": "JAZ je Wärmepumpe",
+          "type": "number",
+          "description": "Beispiel: global.WP1_JAZ."
+        },
+        {
+          "scope": "global",
+          "path": "global.<WP-ID>_Waerme_Jahr_kWh",
+          "label": "Jahreswärme je Wärmepumpe",
+          "type": "number",
+          "unit": "kWh",
+          "description": "Persistente Jahreswärmemenge je Wärmepumpe."
+        },
+        {
+          "scope": "global",
+          "path": "global.<WP-ID>_Strom_Jahr_kWh",
+          "label": "Jahresstrom je Wärmepumpe",
+          "type": "number",
+          "unit": "kWh",
+          "description": "Persistenter Jahresstromverbrauch je Wärmepumpe."
+        },
+        {
+          "scope": "global",
+          "path": "global.COP_Gesamt",
+          "label": "COP Gesamt global",
+          "type": "number",
+          "description": "Global gespeicherter Gesamt-COP."
+        },
+        {
+          "scope": "global",
+          "path": "global.JAZ_Gesamt",
+          "label": "JAZ Gesamt global",
+          "type": "number",
+          "description": "Global gespeicherte Gesamt-JAZ."
+        },
+        {
+          "scope": "global",
+          "path": "global.WP_Waerme_Jahr_Gesamt_kWh",
+          "label": "Jahreswärme Gesamt global",
+          "type": "number",
+          "unit": "kWh",
+          "description": "Global gespeicherte Jahreswärme aller ausgewählten Wärmepumpen."
+        },
+        {
+          "scope": "global",
+          "path": "global.WP_Strom_Jahr_Gesamt_kWh",
+          "label": "Jahresstrom Gesamt global",
+          "type": "number",
+          "unit": "kWh",
+          "description": "Global gespeicherter Jahresstrom aller ausgewählten Wärmepumpen."
+        }
+      ]
     }
   }
 }
