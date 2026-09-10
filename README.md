@@ -445,3 +445,228 @@ Jeder Beitrag hilft dabei, die Kaffeemaschine am Laufen zu halten und sorgt für
 
 Vielen Dank für deine Unterstützung! ❤️
 
+
+---
+
+## Kalender – Feiertag Tirol + Wochenende
+
+**Version:** 1.0.0  
+**Ausgänge:** 1  
+**Zusätzliche HTTP-Request-Nodes:** nicht erforderlich
+
+Prüft automatisch, ob heute Wochenende oder ein für Tirol relevanter Feiertag ist. Die Feiertage werden für Österreich geladen; Tirol-spezifische Feiertage werden über `AT-7` berücksichtigt.
+
+Die Funktion lädt das aktuelle und das nächste Jahr automatisch und verwendet die Zeitzone:
+
+```text
+Europe/Vienna
+```
+
+### Wichtige Werte
+
+```text
+msg.payload.datum
+msg.payload.wochentagName
+msg.payload.istWochenende
+msg.payload.istFeiertagTirol
+msg.payload.heutigerFeiertagTirol
+msg.payload.naechsterFeiertagTirol
+msg.payload.datumNaechsterFeiertagTirol
+msg.payload.tageBisNaechsterFeiertagTirol
+```
+
+Zusätzlich werden die bisherigen Flow-Werte gesetzt:
+
+```text
+flow.istWochenende
+flow.wochenendeText
+flow.wochentagNummer
+flow.wochentagName
+flow.wochenendeLetztePruefung
+
+flow.istFeiertagTirol
+flow.heutigerFeiertagTirol
+flow.tageBisNaechsterFeiertagTirol
+flow.naechsterFeiertagTirol
+flow.naechsterFeiertagTirolName
+flow.naechsterFeiertagTirolDatum
+```
+
+Einfacher Flow:
+
+```text
+Inject → EBST Node Red Remote Funktion
+         Feiertag Tirol + Wochenende
+```
+
+---
+
+## Heizung – Heizgradtage Tirol / Österreich
+
+**Version:** 1.0.0  
+**Ausgänge:** 1
+
+Berechnet aus laufenden Außentemperatur-Messungen das Tagesmittel und daraus die Heizgradtage nach dem Standard **HGT 20/12**.
+
+```text
+Wenn Tagesmittel Außentemperatur <= 12 °C:
+HGT = 20 - Tagesmittel Außentemperatur
+Heiztag = true
+
+Wenn Tagesmittel Außentemperatur > 12 °C:
+HGT = 0
+Heiztag = false
+```
+
+### Eingang
+
+Die aktuelle Außentemperatur wird direkt in `msg.payload` übergeben:
+
+```text
+msg.payload = 8.7
+```
+
+### Ausgabe
+
+```text
+msg.payload.datum
+msg.payload.standard
+msg.payload.aussentemperaturAktuellC
+msg.payload.tagesmittelAussenC
+msg.payload.heizgradtageHeuteK
+msg.payload.istHeiztagHGT
+msg.payload.heuteHeizenNoetig
+msg.payload.messungenHeute
+msg.payload.minAussenC
+msg.payload.maxAussenC
+```
+
+Zusätzlich werden folgende Flow-Werte gesetzt:
+
+```text
+flow.hgtHeuteDaten
+flow.aussentemperaturC
+flow.tagesmittelAussenC
+flow.heizgradtageHeuteK
+flow.istHeiztagHGT
+flow.heuteHeizenNoetig
+```
+
+Die Tagesgrenze richtet sich nach:
+
+```text
+Europe/Vienna
+```
+
+---
+
+## Heizung – COP / Jahresarbeitszahl Wärmepumpen
+
+**Version:** 1.0.0  
+**Ausgänge:** 1  
+**Mehrere Wärmepumpen:** unterstützt  
+**Persistenz über Node-RED-Neustart:** ja
+
+Berechnet den aktuellen COP sowie die Jahresarbeitszahl (JAZ) für eine oder mehrere Wärmepumpen.
+
+```text
+COP = thermische Leistung / elektrische Leistung
+JAZ = abgegebene Wärmemenge im Jahr / elektrische Energie im Jahr
+```
+
+Bei mehreren Wärmepumpen werden die Gesamtwerte korrekt über die Summen berechnet:
+
+```text
+COP Gesamt = Summe Wärmeleistung / Summe elektrische Leistung
+JAZ Gesamt = Summe Jahreswärme / Summe Jahresstrom
+```
+
+### Eingang
+
+Unterstützt werden:
+
+```text
+msg.payload = { ... }
+msg.payload = [ { ... }, { ... } ]
+msg.payload.waermepumpen = [ { ... }, { ... } ]
+msg.payload.heatPumps = [ { ... }, { ... } ]
+```
+
+Beispiel für eine Wärmepumpe:
+
+```json
+{
+  "id": "WP1",
+  "thermalPowerKw": 8.4,
+  "electricalPowerKw": 2.1,
+  "heatEnergyKwh": 15420.5,
+  "electricEnergyKwh": 4120.8
+}
+```
+
+### Wärmepumpen-Auswahl
+
+```text
+Alle Wärmepumpen aus msg.payload
+Nur ausgewählte Wärmepumpen
+```
+
+Bei gezielter Auswahl werden die IDs kommagetrennt angegeben:
+
+```text
+WP1,WP2,WP3
+```
+
+### Energieauswertung
+
+Die Funktion kann Jahresenergie auf drei Arten ermitteln:
+
+```text
+1. direkte Jahreszähler
+2. fortlaufende Gesamtzähler mit Differenzbildung
+3. Integration aus aktueller Leistung über die Zeit
+```
+
+### Persistenz
+
+Die internen Jahreswerte und Zählerstände werden zusätzlich als JSON-Datei im Node-RED-Userverzeichnis gespeichert:
+
+```text
+<Node-RED-userDir>/.ebst-remote-functions/state/cop-jaz-waermepumpen.json
+```
+
+Dadurch gehen die bisher berechneten Jahreswerte bei einem Node-RED-Neustart nicht verloren. Beim ersten Ausführen der Funktion nach dem Neustart wird der gespeicherte Zustand automatisch wieder geladen.
+
+### Global- und Flow-Werte je Wärmepumpe
+
+Bei einer Wärmepumpe mit der ID `WP1` werden unter anderem geschrieben:
+
+```text
+global.WP1_COP
+global.WP1_JAZ
+global.WP1_Waerme_Jahr_kWh
+global.WP1_Strom_Jahr_kWh
+global.WP1_Waermeleistung_kW
+global.WP1_Stromleistung_kW
+```
+
+Die gleichen Werte werden zusätzlich im Flow Context gespeichert.
+
+### Gesamtwerte
+
+```text
+global.COP_Gesamt
+global.JAZ_Gesamt
+global.WP_Waermeleistung_Gesamt_kW
+global.WP_Stromleistung_Gesamt_kW
+global.WP_Waerme_Jahr_Gesamt_kWh
+global.WP_Strom_Jahr_Gesamt_kWh
+```
+
+Der Ausgang enthält zusätzlich alle Einzel- und Gesamtwerte unter:
+
+```text
+msg.payload.pumps
+msg.payload.total
+msg.payload.persistence
+```
