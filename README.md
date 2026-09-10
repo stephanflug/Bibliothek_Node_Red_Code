@@ -670,3 +670,95 @@ Jeder Beitrag hilft dabei, die Kaffeemaschine am Laufen zu halten und sorgt für
 Vielen Dank für deine Unterstützung! ❤️
 
 
+
+
+---
+
+## Klima – h-x Diagramm / Raumluftzustand
+
+**Version:** 1.0.0  
+**Ausgänge:** 1
+
+Berechnet aus Lufttemperatur und relativer Feuchte die wichtigsten psychrometrischen Größen für HLK- und Raumluftauswertungen.
+
+### Eingang
+
+Beispiel:
+
+```json
+{
+  "temperature": 22.5,
+  "humidity": 50
+}
+```
+
+Alternativ werden unter anderem `temperatureC`, `temp`, `temperatur`, `relativeHumidity`, `rh` und `feuchte` erkannt. Auch ein Array `[Temperatur, relativeFeuchte]` ist möglich.
+
+Optional können zusätzlich `pressureHpa` und `surfaceTemperatureC` geliefert werden.
+
+### Berechnete Werte
+
+```text
+msg.payload.humidityRatioGKg              → Feuchtegehalt x [g/kg]
+msg.payload.enthalpyKJkg                  → Enthalpie h [kJ/kg]
+msg.payload.dewPointC                     → Taupunkt [°C]
+msg.payload.dewPointSpreadK               → Taupunktabstand [K]
+msg.payload.absoluteHumidityGM3           → absolute Feuchte [g/m³]
+msg.payload.vaporPressureHpa              → Wasserdampfdruck [hPa]
+msg.payload.saturationVaporPressureHpa    → Sättigungsdampfdruck [hPa]
+msg.payload.wetBulbC                      → Feuchtkugeltemperatur [°C]
+msg.payload.densityKgM3                   → Luftdichte [kg/m³]
+msg.payload.specificVolumeM3KgDryAir      → spezifisches Volumen [m³/kg]
+```
+
+### Behaglichkeit
+
+Die Funktion gibt direkt aus:
+
+```text
+msg.payload.behaglichkeitsbereich = true / false
+msg.payload.comfortReason
+```
+
+Die Temperatur- und Feuchtegrenzen sind im EBST-Node einstellbar. Standardmäßig werden 20 bis 26 °C und 30 bis 60 % rF verwendet. Die Prüfung ist eine einfache Raumluftbewertung und ersetzt keine vollständige PMV/PPD-Berechnung.
+
+### Schimmel- und Kondensationsbewertung
+
+```text
+msg.payload.schimmelGefahr
+msg.payload.moldReason
+msg.payload.criticalSurfaceTempMoldC
+msg.payload.criticalSurfaceTempCondensationC
+```
+
+Ohne Oberflächentemperatur erfolgt eine Screeningbewertung anhand der Raumluftfeuchte. Zusätzlich wird berechnet, wie kalt eine Oberfläche werden darf, bevor die eingestellte Schimmelgrenze beziehungsweise der Taupunkt erreicht wird.
+
+Wenn `surfaceTemperatureC` mitgeliefert wird, werden zusätzlich berechnet:
+
+```text
+msg.payload.surfaceRelativeHumidityPercent
+msg.payload.condensationRisk
+msg.payload.moldRiskSurface
+```
+
+### Flow- und Global-Werte
+
+Die wichtigsten Werte werden parallel im Flow- und Global Context gespeichert:
+
+```text
+hx_Temperatur_C
+hx_RelFeuchte_pct
+hx_x_gkg
+hx_AbsoluteFeuchte_gm3
+hx_Enthalpie_kJkg
+hx_Taupunkt_C
+hx_Taupunktabstand_K
+hx_Feuchtkugel_C
+hx_Luftdichte_kgm3
+hx_Behaglich
+hx_Schimmelgefahr
+hx_KritischeOberflaeche_Schimmel_C
+hx_KritischeOberflaeche_Kondensation_C
+hx_Oberflaechenfeuchte_pct
+hx_Kondensationsgefahr
+```

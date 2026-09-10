@@ -1361,6 +1361,299 @@
           "description": "Global gespeicherter Jahresstrom aller ausgewählten Wärmepumpen."
         }
       ]
+    },
+    "hx-diagramm-raumluft": {
+      "name": "h-x Diagramm / Raumluftzustand",
+      "category": "Klima",
+      "version": "1.0.0",
+      "url": "https://raw.githubusercontent.com/stephanflug/Bibliothek_Node_Red_Code/main/remote/functions/klima/hx-diagramm-raumluft.js",
+      "description": "Berechnet aus Temperatur und relativer Feuchte wichtige psychrometrische Größen für das h-x-Diagramm: Feuchtegehalt x, Enthalpie, Taupunkt, absolute Feuchte, Dampfdruck, Feuchtkugeltemperatur, Luftdichte sowie Behaglichkeits-, Schimmel- und optional Kondensationsbewertung.",
+      "localFile": "remote/functions/klima/hx-diagramm-raumluft.js",
+      "outputs": 1,
+      "outputLabels": [
+        "h-x Raumluftzustand"
+      ],
+      "settings": [
+        {
+          "id": "pressureHpa",
+          "label": "Luftdruck",
+          "type": "number",
+          "default": 1013.25,
+          "min": 500,
+          "max": 1200,
+          "step": 0.01,
+          "required": true,
+          "unit": "hPa",
+          "description": "Standard-Luftdruck für die h-x-Berechnung. Ein pressureHpa-Wert im msg.payload überschreibt diese Einstellung."
+        },
+        {
+          "id": "comfortTempMinC",
+          "label": "Behaglichkeit Temperatur min",
+          "type": "number",
+          "default": 20,
+          "min": -20,
+          "max": 50,
+          "step": 0.1,
+          "required": true,
+          "unit": "°C",
+          "description": "Untere Temperaturgrenze für die einfache Behaglichkeitsprüfung."
+        },
+        {
+          "id": "comfortTempMaxC",
+          "label": "Behaglichkeit Temperatur max",
+          "type": "number",
+          "default": 26,
+          "min": -20,
+          "max": 50,
+          "step": 0.1,
+          "required": true,
+          "unit": "°C",
+          "description": "Obere Temperaturgrenze für die einfache Behaglichkeitsprüfung."
+        },
+        {
+          "id": "comfortRhMin",
+          "label": "Behaglichkeit Feuchte min",
+          "type": "number",
+          "default": 30,
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "required": true,
+          "unit": "% rF",
+          "description": "Untere relative Feuchte für die einfache Behaglichkeitsprüfung."
+        },
+        {
+          "id": "comfortRhMax",
+          "label": "Behaglichkeit Feuchte max",
+          "type": "number",
+          "default": 60,
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "required": true,
+          "unit": "% rF",
+          "description": "Obere relative Feuchte für die einfache Behaglichkeitsprüfung."
+        },
+        {
+          "id": "moldRoomRh",
+          "label": "Schimmelwarnung Raumluft",
+          "type": "number",
+          "default": 70,
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "required": true,
+          "unit": "% rF",
+          "description": "Ab dieser Raumluftfeuchte wird die einfache Schimmel-Screeningwarnung aktiv."
+        },
+        {
+          "id": "moldSurfaceRh",
+          "label": "Schimmelgrenze Oberfläche",
+          "type": "number",
+          "default": 80,
+          "min": 1,
+          "max": 100,
+          "step": 1,
+          "required": true,
+          "unit": "% rF",
+          "description": "Kritische relative Feuchte an einer Oberfläche. Mit optionaler Oberflächentemperatur kann die Oberflächengefahr direkt bewertet werden."
+        }
+      ],
+      "dataPoints": [
+        {
+          "output": 1,
+          "path": "msg.payload.temperatureC",
+          "label": "Temperatur",
+          "type": "number",
+          "unit": "°C",
+          "description": "Eingangstemperatur der Luft."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.relativeHumidityPercent",
+          "label": "Relative Feuchte",
+          "type": "number",
+          "unit": "% rF",
+          "description": "Relative Luftfeuchtigkeit."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.humidityRatioGKg",
+          "label": "Feuchtegehalt x",
+          "type": "number",
+          "unit": "g/kg",
+          "description": "Wasserdampfgehalt bezogen auf kg trockene Luft; zentrale x-Achse des h-x-Diagramms."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.enthalpyKJkg",
+          "label": "Enthalpie h",
+          "type": "number",
+          "unit": "kJ/kg",
+          "description": "Spezifische Enthalpie der feuchten Luft bezogen auf kg trockene Luft."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.dewPointC",
+          "label": "Taupunkt",
+          "type": "number",
+          "unit": "°C",
+          "description": "Taupunkttemperatur der Luft."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.dewPointSpreadK",
+          "label": "Taupunktabstand",
+          "type": "number",
+          "unit": "K",
+          "description": "Differenz zwischen Lufttemperatur und Taupunkt."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.absoluteHumidityGM3",
+          "label": "Absolute Feuchte",
+          "type": "number",
+          "unit": "g/m³",
+          "description": "Wasserdampfmasse pro Kubikmeter Luft."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.vaporPressureHpa",
+          "label": "Wasserdampfdruck",
+          "type": "number",
+          "unit": "hPa",
+          "description": "Aktueller Partialdruck des Wasserdampfs."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.saturationVaporPressureHpa",
+          "label": "Sättigungsdampfdruck",
+          "type": "number",
+          "unit": "hPa",
+          "description": "Sättigungsdampfdruck bei der aktuellen Lufttemperatur."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.wetBulbC",
+          "label": "Feuchtkugeltemperatur",
+          "type": "number",
+          "unit": "°C",
+          "description": "Näherungswert der Feuchtkugeltemperatur."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.densityKgM3",
+          "label": "Luftdichte",
+          "type": "number",
+          "unit": "kg/m³",
+          "description": "Berechnete Dichte der feuchten Luft."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.specificVolumeM3KgDryAir",
+          "label": "Spezifisches Volumen",
+          "type": "number",
+          "unit": "m³/kg",
+          "description": "Spezifisches Volumen bezogen auf kg trockene Luft."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.behaglichkeitsbereich",
+          "label": "Behaglichkeitsbereich",
+          "type": "boolean",
+          "description": "true wenn Temperatur und relative Feuchte innerhalb der eingestellten Grenzen liegen."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.comfortReason",
+          "label": "Behaglichkeit Begründung",
+          "type": "string",
+          "description": "Begründung zur Behaglichkeitsbewertung."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.schimmelGefahr",
+          "label": "Schimmelgefahr",
+          "type": "boolean",
+          "description": "Screeningwert aus Raumluftfeuchte und optional Oberflächenfeuchte."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.moldReason",
+          "label": "Schimmelbewertung Begründung",
+          "type": "string",
+          "description": "Begründung zur Schimmelwarnung."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.criticalSurfaceTempMoldC",
+          "label": "Kritische Oberflächentemperatur Schimmel",
+          "type": "number",
+          "unit": "°C",
+          "description": "Unterhalb dieser Oberflächentemperatur wird die eingestellte kritische Oberflächen-RF erreicht."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.criticalSurfaceTempCondensationC",
+          "label": "Kritische Oberflächentemperatur Kondensation",
+          "type": "number",
+          "unit": "°C",
+          "description": "Entspricht dem Taupunkt: bei kälteren Oberflächen kann Kondensation auftreten."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.surfaceRelativeHumidityPercent",
+          "label": "Relative Feuchte Oberfläche",
+          "type": "number",
+          "unit": "% rF",
+          "description": "Nur verfügbar, wenn eine Oberflächentemperatur im Eingang geliefert wird."
+        },
+        {
+          "output": 1,
+          "path": "msg.payload.condensationRisk",
+          "label": "Kondensationsgefahr",
+          "type": "boolean",
+          "description": "Nur direkt bewertbar, wenn eine Oberflächentemperatur geliefert wird; sonst null."
+        },
+        {
+          "scope": "global",
+          "path": "global.hx_Taupunkt_C",
+          "label": "Taupunkt global",
+          "type": "number",
+          "unit": "°C",
+          "description": "Global gespeicherter Taupunkt."
+        },
+        {
+          "scope": "global",
+          "path": "global.hx_x_gkg",
+          "label": "Feuchtegehalt x global",
+          "type": "number",
+          "unit": "g/kg",
+          "description": "Global gespeicherter Feuchtegehalt."
+        },
+        {
+          "scope": "global",
+          "path": "global.hx_Enthalpie_kJkg",
+          "label": "Enthalpie global",
+          "type": "number",
+          "unit": "kJ/kg",
+          "description": "Global gespeicherte Enthalpie."
+        },
+        {
+          "scope": "global",
+          "path": "global.hx_Behaglich",
+          "label": "Behaglich global",
+          "type": "boolean",
+          "description": "Global gespeicherte Behaglichkeitsentscheidung."
+        },
+        {
+          "scope": "global",
+          "path": "global.hx_Schimmelgefahr",
+          "label": "Schimmelgefahr global",
+          "type": "boolean",
+          "description": "Global gespeicherte Schimmel-Screeningentscheidung."
+        }
+      ]
     }
   }
 }
