@@ -1,0 +1,100 @@
+name: EBST h-x Funktion registrieren
+
+on:
+  push:
+    paths:
+      - ".github/workflows/register-hx-function.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Manifest aktualisieren
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const file = 'remote/manifest.json';
+          const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+
+          manifest.functions['hx-diagramm-raumluft'] = {
+            name: 'h-x Diagramm / Raumluftzustand',
+            category: 'Klima',
+            version: '1.0.0',
+            url: 'https://raw.githubusercontent.com/stephanflug/Bibliothek_Node_Red_Code/main/remote/functions/klima/hx-diagramm-raumluft.js',
+            description: 'Berechnet aus Temperatur und relativer Feuchte wichtige psychrometrische Größen für das h-x-Diagramm: Feuchtegehalt x, Enthalpie, Taupunkt, absolute Feuchte, Dampfdruck, Feuchtkugeltemperatur, Luftdichte sowie Behaglichkeits-, Schimmel- und optional Kondensationsbewertung.',
+            localFile: 'remote/functions/klima/hx-diagramm-raumluft.js',
+            outputs: 1,
+            outputLabels: ['h-x Raumluftzustand'],
+            settings: [
+              {id:'pressureHpa',label:'Luftdruck',type:'number',default:1013.25,min:500,max:1200,step:0.01,required:true,unit:'hPa',description:'Standard-Luftdruck für die h-x-Berechnung. Ein pressureHpa-Wert im msg.payload überschreibt diese Einstellung.'},
+              {id:'comfortTempMinC',label:'Behaglichkeit Temperatur min',type:'number',default:20,min:-20,max:50,step:0.1,required:true,unit:'°C',description:'Untere Temperaturgrenze für die einfache Behaglichkeitsprüfung.'},
+              {id:'comfortTempMaxC',label:'Behaglichkeit Temperatur max',type:'number',default:26,min:-20,max:50,step:0.1,required:true,unit:'°C',description:'Obere Temperaturgrenze für die einfache Behaglichkeitsprüfung.'},
+              {id:'comfortRhMin',label:'Behaglichkeit Feuchte min',type:'number',default:30,min:0,max:100,step:1,required:true,unit:'% rF',description:'Untere relative Feuchte für die einfache Behaglichkeitsprüfung.'},
+              {id:'comfortRhMax',label:'Behaglichkeit Feuchte max',type:'number',default:60,min:0,max:100,step:1,required:true,unit:'% rF',description:'Obere relative Feuchte für die einfache Behaglichkeitsprüfung.'},
+              {id:'moldRoomRh',label:'Schimmelwarnung Raumluft',type:'number',default:70,min:0,max:100,step:1,required:true,unit:'% rF',description:'Ab dieser Raumluftfeuchte wird die einfache Schimmel-Screeningwarnung aktiv.'},
+              {id:'moldSurfaceRh',label:'Schimmelgrenze Oberfläche',type:'number',default:80,min:1,max:100,step:1,required:true,unit:'% rF',description:'Kritische relative Feuchte an einer Oberfläche. Mit optionaler Oberflächentemperatur kann die Oberflächengefahr direkt bewertet werden.'}
+            ],
+            dataPoints: [
+              {output:1,path:'msg.payload.temperatureC',label:'Temperatur',type:'number',unit:'°C',description:'Eingangstemperatur der Luft.'},
+              {output:1,path:'msg.payload.relativeHumidityPercent',label:'Relative Feuchte',type:'number',unit:'% rF',description:'Relative Luftfeuchtigkeit.'},
+              {output:1,path:'msg.payload.humidityRatioGKg',label:'Feuchtegehalt x',type:'number',unit:'g/kg',description:'Wasserdampfgehalt bezogen auf kg trockene Luft; zentrale x-Achse des h-x-Diagramms.'},
+              {output:1,path:'msg.payload.enthalpyKJkg',label:'Enthalpie h',type:'number',unit:'kJ/kg',description:'Spezifische Enthalpie der feuchten Luft bezogen auf kg trockene Luft.'},
+              {output:1,path:'msg.payload.dewPointC',label:'Taupunkt',type:'number',unit:'°C',description:'Taupunkttemperatur der Luft.'},
+              {output:1,path:'msg.payload.dewPointSpreadK',label:'Taupunktabstand',type:'number',unit:'K',description:'Differenz zwischen Lufttemperatur und Taupunkt.'},
+              {output:1,path:'msg.payload.absoluteHumidityGM3',label:'Absolute Feuchte',type:'number',unit:'g/m³',description:'Wasserdampfmasse pro Kubikmeter Luft.'},
+              {output:1,path:'msg.payload.vaporPressureHpa',label:'Wasserdampfdruck',type:'number',unit:'hPa',description:'Aktueller Partialdruck des Wasserdampfs.'},
+              {output:1,path:'msg.payload.saturationVaporPressureHpa',label:'Sättigungsdampfdruck',type:'number',unit:'hPa',description:'Sättigungsdampfdruck bei der aktuellen Lufttemperatur.'},
+              {output:1,path:'msg.payload.wetBulbC',label:'Feuchtkugeltemperatur',type:'number',unit:'°C',description:'Näherungswert der Feuchtkugeltemperatur.'},
+              {output:1,path:'msg.payload.densityKgM3',label:'Luftdichte',type:'number',unit:'kg/m³',description:'Berechnete Dichte der feuchten Luft.'},
+              {output:1,path:'msg.payload.specificVolumeM3KgDryAir',label:'Spezifisches Volumen',type:'number',unit:'m³/kg',description:'Spezifisches Volumen bezogen auf kg trockene Luft.'},
+              {output:1,path:'msg.payload.behaglichkeitsbereich',label:'Behaglichkeitsbereich',type:'boolean',description:'true wenn Temperatur und relative Feuchte innerhalb der eingestellten Grenzen liegen.'},
+              {output:1,path:'msg.payload.comfortReason',label:'Behaglichkeit Begründung',type:'string',description:'Begründung zur Behaglichkeitsbewertung.'},
+              {output:1,path:'msg.payload.schimmelGefahr',label:'Schimmelgefahr',type:'boolean',description:'Screeningwert aus Raumluftfeuchte und optional Oberflächenfeuchte.'},
+              {output:1,path:'msg.payload.moldReason',label:'Schimmelbewertung Begründung',type:'string',description:'Begründung zur Schimmelwarnung.'},
+              {output:1,path:'msg.payload.criticalSurfaceTempMoldC',label:'Kritische Oberflächentemperatur Schimmel',type:'number',unit:'°C',description:'Unterhalb dieser Oberflächentemperatur wird die eingestellte kritische Oberflächen-RF erreicht.'},
+              {output:1,path:'msg.payload.criticalSurfaceTempCondensationC',label:'Kritische Oberflächentemperatur Kondensation',type:'number',unit:'°C',description:'Entspricht dem Taupunkt: bei kälteren Oberflächen kann Kondensation auftreten.'},
+              {output:1,path:'msg.payload.surfaceRelativeHumidityPercent',label:'Relative Feuchte Oberfläche',type:'number',unit:'% rF',description:'Nur verfügbar, wenn eine Oberflächentemperatur im Eingang geliefert wird.'},
+              {output:1,path:'msg.payload.condensationRisk',label:'Kondensationsgefahr',type:'boolean',description:'Nur direkt bewertbar, wenn eine Oberflächentemperatur geliefert wird; sonst null.'},
+              {scope:'global',path:'global.hx_Taupunkt_C',label:'Taupunkt global',type:'number',unit:'°C',description:'Global gespeicherter Taupunkt.'},
+              {scope:'global',path:'global.hx_x_gkg',label:'Feuchtegehalt x global',type:'number',unit:'g/kg',description:'Global gespeicherter Feuchtegehalt.'},
+              {scope:'global',path:'global.hx_Enthalpie_kJkg',label:'Enthalpie global',type:'number',unit:'kJ/kg',description:'Global gespeicherte Enthalpie.'},
+              {scope:'global',path:'global.hx_Behaglich',label:'Behaglich global',type:'boolean',description:'Global gespeicherte Behaglichkeitsentscheidung.'},
+              {scope:'global',path:'global.hx_Schimmelgefahr',label:'Schimmelgefahr global',type:'boolean',description:'Global gespeicherte Schimmel-Screeningentscheidung.'}
+            ]
+          };
+
+          fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + '\n');
+          NODE
+
+      - name: README ergänzen
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const file = 'README.md';
+          let text = fs.readFileSync(file, 'utf8');
+          const marker = '## Klima – h-x Diagramm / Raumluftzustand';
+          if (!text.includes(marker)) {
+            text += `\n\n---\n\n## Klima – h-x Diagramm / Raumluftzustand\n\n**Version:** 1.0.0  \n**Ausgänge:** 1\n\nBerechnet aus Lufttemperatur und relativer Feuchte die wichtigsten psychrometrischen Größen für HLK- und Raumluftauswertungen.\n\n### Eingang\n\nBeispiel:\n\n\`\`\`json\n{\n  "temperature": 22.5,\n  "humidity": 50\n}\n\`\`\`\n\nAlternativ werden unter anderem \`temperatureC\`, \`temp\`, \`temperatur\`, \`relativeHumidity\`, \`rh\` und \`feuchte\` erkannt. Auch ein Array \`[Temperatur, relativeFeuchte]\` ist möglich.\n\nOptional können zusätzlich \`pressureHpa\` und \`surfaceTemperatureC\` geliefert werden.\n\n### Berechnete Werte\n\n\`\`\`text\nmsg.payload.humidityRatioGKg              → Feuchtegehalt x [g/kg]\nmsg.payload.enthalpyKJkg                  → Enthalpie h [kJ/kg]\nmsg.payload.dewPointC                     → Taupunkt [°C]\nmsg.payload.dewPointSpreadK               → Taupunktabstand [K]\nmsg.payload.absoluteHumidityGM3           → absolute Feuchte [g/m³]\nmsg.payload.vaporPressureHpa              → Wasserdampfdruck [hPa]\nmsg.payload.saturationVaporPressureHpa    → Sättigungsdampfdruck [hPa]\nmsg.payload.wetBulbC                      → Feuchtkugeltemperatur [°C]\nmsg.payload.densityKgM3                   → Luftdichte [kg/m³]\nmsg.payload.specificVolumeM3KgDryAir      → spezifisches Volumen [m³/kg]\n\`\`\`\n\n### Behaglichkeit\n\nDie Funktion gibt direkt aus:\n\n\`\`\`text\nmsg.payload.behaglichkeitsbereich = true / false\nmsg.payload.comfortReason\n\`\`\`\n\nDie Temperatur- und Feuchtegrenzen sind im EBST-Node einstellbar. Standardmäßig werden 20 bis 26 °C und 30 bis 60 % rF verwendet. Die Prüfung ist eine einfache Raumluftbewertung und ersetzt keine vollständige PMV/PPD-Berechnung.\n\n### Schimmel- und Kondensationsbewertung\n\n\`\`\`text\nmsg.payload.schimmelGefahr\nmsg.payload.moldReason\nmsg.payload.criticalSurfaceTempMoldC\nmsg.payload.criticalSurfaceTempCondensationC\n\`\`\`\n\nOhne Oberflächentemperatur erfolgt eine Screeningbewertung anhand der Raumluftfeuchte. Zusätzlich wird berechnet, wie kalt eine Oberfläche werden darf, bevor die eingestellte Schimmelgrenze beziehungsweise der Taupunkt erreicht wird.\n\nWenn \`surfaceTemperatureC\` mitgeliefert wird, werden zusätzlich berechnet:\n\n\`\`\`text\nmsg.payload.surfaceRelativeHumidityPercent\nmsg.payload.condensationRisk\nmsg.payload.moldRiskSurface\n\`\`\`\n\n### Flow- und Global-Werte\n\nDie wichtigsten Werte werden parallel im Flow- und Global Context gespeichert:\n\n\`\`\`text\nhx_Temperatur_C\nhx_RelFeuchte_pct\nhx_x_gkg\nhx_AbsoluteFeuchte_gm3\nhx_Enthalpie_kJkg\nhx_Taupunkt_C\nhx_Taupunktabstand_K\nhx_Feuchtkugel_C\nhx_Luftdichte_kgm3\nhx_Behaglich\nhx_Schimmelgefahr\nhx_KritischeOberflaeche_Schimmel_C\nhx_KritischeOberflaeche_Kondensation_C\nhx_Oberflaechenfeuchte_pct\nhx_Kondensationsgefahr\n\`\`\`\n`;
+            fs.writeFileSync(file, text);
+          }
+          NODE
+
+      - name: Änderungen committen
+        run: |
+          if git diff --quiet -- remote/manifest.json README.md; then
+            echo "Manifest und README bereits aktuell."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add remote/manifest.json README.md
+          git commit -m "h-x Raumluftfunktion registrieren und dokumentieren"
+          git push
