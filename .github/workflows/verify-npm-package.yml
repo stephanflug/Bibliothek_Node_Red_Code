@@ -1,0 +1,45 @@
+name: Verify npm package
+
+on:
+  push:
+    paths:
+      - "package.json"
+      - "ebst-remote-function.js"
+      - "ebst-remote-function.html"
+      - "lib/**"
+      - "remote/**"
+      - "examples/**"
+      - "README.md"
+      - "LICENSE"
+      - ".github/workflows/verify-npm-package.yml"
+  pull_request:
+    paths:
+      - "package.json"
+      - "ebst-remote-function.js"
+      - "ebst-remote-function.html"
+      - "lib/**"
+      - "remote/**"
+      - "examples/**"
+      - "README.md"
+      - "LICENSE"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Syntax check
+        run: npm run check
+
+      - name: Verify publish contents
+        run: npm pack --dry-run
