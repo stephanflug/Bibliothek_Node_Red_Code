@@ -39,6 +39,28 @@ Ab **Basis-Version V1.4.0** steht Remote-Funktionen zusätzlich ein integrierter
 
 ## Installation
 
+### Installation über npm / Node-RED Palette
+
+Nach der öffentlichen Veröffentlichung kann der Basis-Node direkt aus npm installiert werden:
+
+```bash
+cd ~/.node-red
+npm install @stephanflug/node-red-ebst-remote-function
+```
+
+Oder direkt in Node-RED:
+
+```text
+Menü → Manage palette / Palette verwalten → Install
+Suche: @stephanflug/node-red-ebst-remote-function
+```
+
+Danach steht unter **Function** der Node **EBST Node Red Remote Funktion** zur Verfügung. Die einzelnen Funktionen werden anschließend zentral über das GitHub-Manifest geladen und aktualisiert.
+
+> Bei einem Wechsel von der bisherigen lokalen/TGZ-Installation sollte zuerst das alte Paket `node-red-contrib-ebst-remote-function` entfernt werden, damit nicht zwei Pakete denselben Node-Typ registrieren.
+
+### Manuelle Installation über TGZ
+
 Aktuelles Installationspaket:
 
 ```text
