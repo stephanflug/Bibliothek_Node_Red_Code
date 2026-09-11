@@ -2,6 +2,9 @@ name: Publish npm package
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - "publish/npm-trigger.txt"
 
 permissions:
   contents: read
