@@ -1,27 +1,60 @@
 {
-  "name": "node-red-contrib-ebst-remote-function",
+  "name": "@stephanflug/node-red-ebst-remote-function",
   "version": "1.4.0",
-  "description": "Dynamischer universeller Node-RED Node „EBST Node Red Remote Funktion“ mit zentralen Remote-Funktionen, dynamischen Einstellungen, Datenpunktbeschreibung und integriertem HTTP-Client.",
-  "private": true,
-  "license": "UNLICENSED",
+  "description": "Dynamischer Node-RED Node für zentral verwaltete EBST Remote-Funktionen mit automatischen Updates, dynamischen Einstellungen, Datenpunktbeschreibung und integriertem HTTP-Client.",
+  "license": "MIT",
+  "author": "stephanflug",
+  "homepage": "https://github.com/stephanflug/Bibliothek_Node_Red_Code#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/stephanflug/Bibliothek_Node_Red_Code.git"
+    "url": "git+https://github.com/stephanflug/Bibliothek_Node_Red_Code.git"
   },
+  "bugs": {
+    "url": "https://github.com/stephanflug/Bibliothek_Node_Red_Code/issues"
+  },
+  "funding": {
+    "type": "individual",
+    "url": "https://paypal.me/stephanflug"
+  },
+  "keywords": [
+    "node-red",
+    "node-red-contrib",
+    "remote-function",
+    "building-automation",
+    "automation",
+    "hvac",
+    "energy",
+    "weather"
+  ],
   "main": "ebst-remote-function.js",
+  "files": [
+    "ebst-remote-function.js",
+    "ebst-remote-function.html",
+    "lib/",
+    "remote/",
+    "examples/",
+    "LICENSE",
+    "README.md"
+  ],
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
     "got": "13.0.0",
     "tough-cookie": "4.1.4"
   },
   "node-red": {
+    "version": ">=3.1.0",
     "nodes": {
       "ebst-remote-function": "ebst-remote-function.js"
     }
   },
   "scripts": {
-    "check": "node --check ebst-remote-function.js && node --check lib/remote-manager.js && node --check lib/http-client.js && node --check remote/functions/wetter/orf-innsbruck.js && node --check remote/functions/wetter/techweb-tirol-station.js && node --check remote/functions/astronomie/sonnenstand.js && node --check remote/functions/astronomie/sonne-trifft-haus.js && node --check remote/functions/energie/strompreis-tiwag-tinetz.js"
+    "check": "node --check ebst-remote-function.js && node --check lib/remote-manager.js && node --check lib/http-client.js && node --check remote/functions/wetter/orf-innsbruck.js && node --check remote/functions/wetter/techweb-tirol-station.js && node --check remote/functions/astronomie/sonnenstand.js && node --check remote/functions/astronomie/sonne-trifft-haus.js && node --check remote/functions/energie/strompreis-tiwag-tinetz.js && node --check remote/functions/kalender/feiertag-tirol-wochenende.js && node --check remote/functions/heizung/heizgradtage-tirol-oesterreich.js && node --check remote/functions/heizung/cop-jaz-waermepumpen.js && node --check remote/functions/heizung/aufheizdauer-berechnung.js && node --check remote/functions/klima/hx-diagramm-raumluft.js",
+    "prepublishOnly": "npm run check"
   }
 }
