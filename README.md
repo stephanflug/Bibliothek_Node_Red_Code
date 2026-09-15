@@ -901,3 +901,58 @@ flow.HK_Info
 ```
 
 Die wichtigsten Statuswerte werden zusätzlich unter `global.HK_*` bereitgestellt.
+
+
+---
+
+## Kalender – Schulferien Österreich
+
+**Version:** 1.0.0  
+**Ausgänge:** 3 – Ferien aktiv / Sommerferien aktiv / Details
+
+Schulferien-Kalender für Österreich mit direkter Auswahl des Bundeslandes im EBST-Node. Die Daten werden über die OpenHolidays API geladen.
+
+### Bundesländer
+
+```text
+Burgenland
+Kärnten
+Niederösterreich
+Oberösterreich
+Salzburg
+Steiermark
+Tirol
+Vorarlberg
+Wien
+```
+
+### Ausgänge
+
+```text
+Ausgang 1 → Schulferien aktuell true/false
+Ausgang 2 → Sommerferien aktuell true/false
+Ausgang 3 → Detailobjekt
+```
+
+### Wichtige Detailwerte
+
+```text
+msg.payload.bundesland
+msg.payload.ferienAktiv
+msg.payload.sommerferienAktiv
+msg.payload.aktuelleFerienName
+msg.payload.aktuelleFerienBeginn
+msg.payload.aktuelleFerienEnde
+msg.payload.tageFerienRest
+msg.payload.naechsteFerienName
+msg.payload.naechsteFerienBeginn
+msg.payload.naechsteFerienEnde
+msg.payload.tageBisNaechsteFerien
+msg.payload.sommerferienBeginn
+msg.payload.sommerferienEnde
+msg.payload.tageBisSommerferien
+msg.payload.tageSommerferienRest
+msg.payload.ferienListe
+```
+
+Die wichtigsten Werte werden zusätzlich als `flow.Schulferien_*` und `global.Schulferien_*` gespeichert. Bei einem API-Fehler kann optional die letzte gültige Ferienliste weiterverwendet werden.

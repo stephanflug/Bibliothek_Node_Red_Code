@@ -2482,6 +2482,266 @@
           "type": "boolean"
         }
       ]
+    },
+    "schulferien-oesterreich": {
+      "name": "Schulferien Österreich",
+      "category": "Kalender",
+      "version": "1.0.0",
+      "url": "https://raw.githubusercontent.com/stephanflug/Bibliothek_Node_Red_Code/main/remote/functions/kalender/schulferien-oesterreich.js",
+      "description": "Schulferien-Kalender für Österreich mit Auswahl des Bundeslandes. Liefert allgemeine Ferien, Sommerferien und Detaildaten inklusive nächstem Ferienzeitraum und Resttagen.",
+      "localFile": "remote/functions/kalender/schulferien-oesterreich.js",
+      "outputs": 3,
+      "outputLabels": [
+        "Ferien aktiv",
+        "Sommerferien aktiv",
+        "Details"
+      ],
+      "settings": [
+        {
+          "id": "bundesland",
+          "label": "Bundesland",
+          "type": "select",
+          "default": "AT-TI",
+          "required": true,
+          "options": [
+            {
+              "value": "AT-BL",
+              "label": "Burgenland"
+            },
+            {
+              "value": "AT-KÄ",
+              "label": "Kärnten"
+            },
+            {
+              "value": "AT-NÖ",
+              "label": "Niederösterreich"
+            },
+            {
+              "value": "AT-OÖ",
+              "label": "Oberösterreich"
+            },
+            {
+              "value": "AT-SB",
+              "label": "Salzburg"
+            },
+            {
+              "value": "AT-SM",
+              "label": "Steiermark"
+            },
+            {
+              "value": "AT-TI",
+              "label": "Tirol"
+            },
+            {
+              "value": "AT-VA",
+              "label": "Vorarlberg"
+            },
+            {
+              "value": "AT-WI",
+              "label": "Wien"
+            }
+          ],
+          "description": "Bundesland auswählen, dessen Schulferien ausgewertet werden sollen."
+        },
+        {
+          "id": "refreshMinutes",
+          "label": "API-Aktualisierung",
+          "type": "number",
+          "default": 720,
+          "min": 15,
+          "max": 10080,
+          "step": 15,
+          "required": true,
+          "unit": "min",
+          "description": "Zeit bis die Ferienliste erneut von OpenHolidays geladen wird. Standard: 12 Stunden."
+        },
+        {
+          "id": "useCacheOnError",
+          "label": "Bei API-Fehler letzte Daten verwenden",
+          "type": "boolean",
+          "default": true,
+          "required": true,
+          "description": "Wenn die API nicht erreichbar ist, werden die zuletzt geladenen Daten weiter verwendet."
+        }
+      ],
+      "dataPoints": [
+        {
+          "output": 1,
+          "path": "msg.payload",
+          "label": "Schulferien aktiv",
+          "type": "boolean",
+          "description": "true, wenn heute im ausgewählten Bundesland ein Schulferienzeitraum aktiv ist."
+        },
+        {
+          "output": 2,
+          "path": "msg.payload",
+          "label": "Sommerferien aktiv",
+          "type": "boolean",
+          "description": "true, wenn heute Sommerferien im ausgewählten Bundesland sind."
+        },
+        {
+          "output": 3,
+          "path": "msg.payload.bundesland",
+          "label": "Bundesland",
+          "type": "string"
+        },
+        {
+          "output": 3,
+          "path": "msg.payload.ferienAktiv",
+          "label": "Ferien aktiv",
+          "type": "boolean"
+        },
+        {
+          "output": 3,
+          "path": "msg.payload.sommerferienAktiv",
+          "label": "Sommerferien aktiv",
+          "type": "boolean"
+        },
+        {
+          "output": 3,
+          "path": "msg.payload.aktuelleFerienName",
+          "label": "Aktuelle Ferien",
+          "type": "string"
+        },
+        {
+          "output": 3,
+          "path": "msg.payload.aktuelleFerienBeginn",
+          "label": "Aktuelle Ferien Beginn",
+          "type": "string"
+        },
+        {
+          "output": 3,
+          "path": "msg.payload.aktuelleFerienEnde",
+          "label": "Aktuelle Ferien Ende",
+          "type": "string"
+        },
+        {
+          "output": 3,
+          "path": "msg.payload.tageFerienRest",
+          "label": "Resttage aktuelle Ferien",
+          "type": "number",
+          "unit": "Tage"
+        },
+        {
+          "output": 3,
+          "path": "msg.payload.naechsteFerienName",
+          "label": "Nächste Ferien",
+          "type": "string"
+        },
+        {
+          "output": 3,
+          "path": "msg.payload.naechsteFerienBeginn",
+          "label": "Nächste Ferien Beginn",
+          "type": "string"
+        },
+        {
+          "output": 3,
+          "path": "msg.payload.naechsteFerienEnde",
+          "label": "Nächste Ferien Ende",
+          "type": "string"
+        },
+        {
+          "output": 3,
+          "path": "msg.payload.tageBisNaechsteFerien",
+          "label": "Tage bis nächste Ferien",
+          "type": "number",
+          "unit": "Tage"
+        },
+        {
+          "output": 3,
+          "path": "msg.payload.sommerferienBeginn",
+          "label": "Sommerferien Beginn",
+          "type": "string"
+        },
+        {
+          "output": 3,
+          "path": "msg.payload.sommerferienEnde",
+          "label": "Sommerferien Ende",
+          "type": "string"
+        },
+        {
+          "output": 3,
+          "path": "msg.payload.tageBisSommerferien",
+          "label": "Tage bis Sommerferien",
+          "type": "number",
+          "unit": "Tage"
+        },
+        {
+          "output": 3,
+          "path": "msg.payload.tageSommerferienRest",
+          "label": "Resttage Sommerferien",
+          "type": "number",
+          "unit": "Tage"
+        },
+        {
+          "output": 3,
+          "path": "msg.payload.ferienListe",
+          "label": "Ferienliste",
+          "type": "array"
+        },
+        {
+          "output": 3,
+          "path": "msg.payload.stale",
+          "label": "Cache-Daten wegen API-Fehler",
+          "type": "boolean"
+        },
+        {
+          "scope": "flow",
+          "path": "flow.Schulferien_Aktiv",
+          "label": "Schulferien aktiv Flow",
+          "type": "boolean"
+        },
+        {
+          "scope": "flow",
+          "path": "flow.Schulferien_Name",
+          "label": "Aktuelle Schulferien Flow",
+          "type": "string"
+        },
+        {
+          "scope": "flow",
+          "path": "flow.Schulferien_Naechste_Name",
+          "label": "Nächste Schulferien Flow",
+          "type": "string"
+        },
+        {
+          "scope": "flow",
+          "path": "flow.Schulferien_Tage_bis_naechste",
+          "label": "Tage bis nächste Ferien Flow",
+          "type": "number",
+          "unit": "Tage"
+        },
+        {
+          "scope": "flow",
+          "path": "flow.Schulferien_Sommer_Aktiv",
+          "label": "Sommerferien aktiv Flow",
+          "type": "boolean"
+        },
+        {
+          "scope": "flow",
+          "path": "flow.Schulferien_Tage_bis_Sommer",
+          "label": "Tage bis Sommerferien Flow",
+          "type": "number",
+          "unit": "Tage"
+        },
+        {
+          "scope": "global",
+          "path": "global.Schulferien_Aktiv",
+          "label": "Schulferien aktiv global",
+          "type": "boolean"
+        },
+        {
+          "scope": "global",
+          "path": "global.Schulferien_Sommer_Aktiv",
+          "label": "Sommerferien aktiv global",
+          "type": "boolean"
+        },
+        {
+          "scope": "global",
+          "path": "global.Schulferien_Info",
+          "label": "Schulferien Details global",
+          "type": "object"
+        }
+      ]
     }
   }
 }
