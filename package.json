@@ -54,7 +54,7 @@
     }
   },
   "scripts": {
-    "check": "node --check ebst-remote-function.js && node --check lib/remote-manager.js && node --check lib/http-client.js && node --check remote/functions/wetter/orf-innsbruck.js && node --check remote/functions/wetter/techweb-tirol-station.js && node --check remote/functions/astronomie/sonnenstand.js && node --check remote/functions/astronomie/sonne-trifft-haus.js && node --check remote/functions/energie/strompreis-tiwag-tinetz.js && node --check remote/functions/kalender/feiertag-tirol-wochenende.js && node --check remote/functions/heizung/heizgradtage-tirol-oesterreich.js && node --check remote/functions/heizung/cop-jaz-waermepumpen.js && node --check remote/functions/heizung/aufheizdauer-berechnung.js && node --check remote/functions/klima/hx-diagramm-raumluft.js",
+    "check": "node --check ebst-remote-function.js && node --check lib/remote-manager.js && node --check lib/http-client.js && node --check remote/functions/wetter/orf-innsbruck.js && node --check remote/functions/wetter/techweb-tirol-station.js && node --check remote/functions/astronomie/sonnenstand.js && node --check remote/functions/astronomie/sonne-trifft-haus.js && node --check remote/functions/energie/strompreis-tiwag-tinetz.js && node --check remote/functions/kalender/feiertag-tirol-wochenende.js && node --check remote/functions/heizung/heizgradtage-tirol-oesterreich.js && node --check remote/functions/heizung/cop-jaz-waermepumpen.js && node --check remote/functions/heizung/aufheizdauer-berechnung.js && node --check remote/functions/klima/hx-diagramm-raumluft.js && node --check remote/functions/heizung/heizen-kuehlen-wetterprognose.js",
     "prepublishOnly": "npm run check"
   }
 }

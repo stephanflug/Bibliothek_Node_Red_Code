@@ -1950,6 +1950,538 @@
           "description": "Global gespeicherte geschätzte Zielzeit."
         }
       ]
+    },
+    "heizen-kuehlen-wetterprognose": {
+      "name": "Heizen / Kühlen nach Wetterprognose",
+      "category": "Heizung",
+      "version": "1.0.0",
+      "url": "https://raw.githubusercontent.com/stephanflug/Bibliothek_Node_Red_Code/main/remote/functions/heizung/heizen-kuehlen-wetterprognose.js",
+      "description": "Ermittelt aus der 5-Tage-Temperaturprognose mit Gewichtung, Hysterese, Sperrzeit und vorausschauendem Kühlstart automatisch Heizen, Kühlen oder Aus. Alle Grenzwerte und Score-Faktoren sind im Node einstellbar.",
+      "localFile": "remote/functions/heizung/heizen-kuehlen-wetterprognose.js",
+      "outputs": 3,
+      "outputLabels": [
+        "Heizen",
+        "Kühlen",
+        "Aus"
+      ],
+      "settings": [
+        {
+          "id": "heizGrenze",
+          "label": "Heizgrenze Prognose",
+          "type": "number",
+          "default": 8,
+          "min": -30,
+          "max": 40,
+          "step": 0.1,
+          "required": true,
+          "unit": "°C",
+          "description": "Unterhalb dieser gewichteten Prognosetemperatur steigt der Heizscore."
+        },
+        {
+          "id": "kuehlGrenze",
+          "label": "Kühlgrenze Prognose",
+          "type": "number",
+          "default": 13,
+          "min": -10,
+          "max": 50,
+          "step": 0.1,
+          "required": true,
+          "unit": "°C",
+          "description": "Oberhalb dieser gewichteten Prognosetemperatur steigt der Kühlscore."
+        },
+        {
+          "id": "einSchwelle",
+          "label": "Einschaltschwelle Score",
+          "type": "number",
+          "default": 1.2,
+          "min": 0,
+          "max": 20,
+          "step": 0.1,
+          "required": true,
+          "description": "Score ab dem Heizen oder Kühlen eingeschaltet werden darf."
+        },
+        {
+          "id": "ausSchwelle",
+          "label": "Ausschaltschwelle Score",
+          "type": "number",
+          "default": 0.4,
+          "min": 0,
+          "max": 20,
+          "step": 0.1,
+          "required": true,
+          "description": "Score unter dem der aktive Modus ausgeschaltet werden darf."
+        },
+        {
+          "id": "minSchaltzeitMinuten",
+          "label": "Mindestzeit zwischen Moduswechseln",
+          "type": "number",
+          "default": 120,
+          "min": 0,
+          "max": 10080,
+          "step": 1,
+          "required": true,
+          "unit": "min",
+          "description": "Sperrzeit zwischen echten Moduswechseln."
+        },
+        {
+          "id": "gebaeudeKonstante",
+          "label": "Gebäudeträgheit",
+          "type": "select",
+          "default": "0.5",
+          "required": true,
+          "options": [
+            {
+              "value": "0.5",
+              "label": "Sehr träge / massiv (0,5)"
+            },
+            {
+              "value": "1",
+              "label": "Normal (1,0)"
+            },
+            {
+              "value": "1.5",
+              "label": "Leicht / schnelle Reaktion (1,5)"
+            }
+          ],
+          "description": "Faktor für die Reaktion des Gebäudes auf die Wetterprognose."
+        },
+        {
+          "id": "wechselAbstand",
+          "label": "Mindestabstand Heiz-/Kühlscore",
+          "type": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 20,
+          "step": 0.1,
+          "required": true,
+          "description": "Zusätzlicher Score-Abstand für einen direkten Wechsel zwischen Heizen und Kühlen."
+        },
+        {
+          "id": "gewichtTag1",
+          "label": "Gewichtung Prognose Tag 1",
+          "type": "number",
+          "default": 0.4,
+          "min": 0,
+          "max": 1,
+          "step": 0.01,
+          "required": true
+        },
+        {
+          "id": "gewichtTag2",
+          "label": "Gewichtung Prognose Tag 2",
+          "type": "number",
+          "default": 0.25,
+          "min": 0,
+          "max": 1,
+          "step": 0.01,
+          "required": true
+        },
+        {
+          "id": "gewichtTag3",
+          "label": "Gewichtung Prognose Tag 3",
+          "type": "number",
+          "default": 0.18,
+          "min": 0,
+          "max": 1,
+          "step": 0.01,
+          "required": true
+        },
+        {
+          "id": "gewichtTag4",
+          "label": "Gewichtung Prognose Tag 4",
+          "type": "number",
+          "default": 0.1,
+          "min": 0,
+          "max": 1,
+          "step": 0.01,
+          "required": true
+        },
+        {
+          "id": "gewichtTag5",
+          "label": "Gewichtung Prognose Tag 5",
+          "type": "number",
+          "default": 0.07,
+          "min": 0,
+          "max": 1,
+          "step": 0.01,
+          "required": true
+        },
+        {
+          "id": "kuehlVorstartAktiv",
+          "label": "Vorausschauendes Kühlen aktiv",
+          "type": "boolean",
+          "default": true,
+          "required": true,
+          "description": "Aktiviert den Kühl-Vorstart auf Basis naher warmer Tage."
+        },
+        {
+          "id": "kuehlVorstartTemp",
+          "label": "Vorstart Kühlung ab Tagesmaximum",
+          "type": "number",
+          "default": 17,
+          "min": -10,
+          "max": 60,
+          "step": 0.1,
+          "required": true,
+          "unit": "°C",
+          "description": "Ab dieser Tageshöchsttemperatur wird der Kühl-Vorstart ausgelöst."
+        },
+        {
+          "id": "kuehlVorstartTage",
+          "label": "Vorstart Betrachtungsfenster",
+          "type": "select",
+          "default": "3",
+          "required": true,
+          "options": [
+            {
+              "value": "1",
+              "label": "1 Tag"
+            },
+            {
+              "value": "2",
+              "label": "2 Tage"
+            },
+            {
+              "value": "3",
+              "label": "3 Tage"
+            },
+            {
+              "value": "4",
+              "label": "4 Tage"
+            },
+            {
+              "value": "5",
+              "label": "5 Tage"
+            }
+          ],
+          "description": "Wie viele kommende Tage für den Kühl-Vorstart betrachtet werden."
+        },
+        {
+          "id": "kuehlVorstartScore",
+          "label": "Vorstart Zusatz-Score",
+          "type": "number",
+          "default": 1.4,
+          "min": 0,
+          "max": 20,
+          "step": 0.1,
+          "required": true,
+          "description": "Zusätzlicher Kühlscore, wenn der Vorstart aktiv wird."
+        },
+        {
+          "id": "kaltNachtAbstandK",
+          "label": "Kalte Nacht unter Heizgrenze",
+          "type": "number",
+          "default": 3,
+          "min": 0,
+          "max": 30,
+          "step": 0.1,
+          "required": true,
+          "unit": "K",
+          "description": "Wenn das Prognoseminimum um diesen Abstand unter der Heizgrenze liegt, wird der Heizscore erhöht."
+        },
+        {
+          "id": "kaltNachtBonus",
+          "label": "Kalte Nacht Heizscore-Bonus",
+          "type": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 20,
+          "step": 0.1,
+          "required": true,
+          "description": "Heizscore-Zuschlag bei deutlich kalter Nacht."
+        },
+        {
+          "id": "warmGrenze27",
+          "label": "Warmgrenze 1",
+          "type": "number",
+          "default": 27,
+          "min": 0,
+          "max": 60,
+          "step": 0.1,
+          "required": true,
+          "unit": "°C"
+        },
+        {
+          "id": "warmGrenze28",
+          "label": "Warmgrenze 2",
+          "type": "number",
+          "default": 28,
+          "min": 0,
+          "max": 60,
+          "step": 0.1,
+          "required": true,
+          "unit": "°C"
+        },
+        {
+          "id": "warmGrenze29",
+          "label": "Warmgrenze 3",
+          "type": "number",
+          "default": 29,
+          "min": 0,
+          "max": 60,
+          "step": 0.1,
+          "required": true,
+          "unit": "°C"
+        },
+        {
+          "id": "warmGrenze30",
+          "label": "Warmgrenze 4",
+          "type": "number",
+          "default": 30,
+          "min": 0,
+          "max": 60,
+          "step": 0.1,
+          "required": true,
+          "unit": "°C"
+        },
+        {
+          "id": "bonusNahe27Zwei",
+          "label": "Bonus: 2 nahe Tage ab Warmgrenze 1",
+          "type": "number",
+          "default": 0.3,
+          "min": 0,
+          "max": 20,
+          "step": 0.1,
+          "required": true
+        },
+        {
+          "id": "bonusNahe28Eins",
+          "label": "Bonus: 1 naher Tag ab Warmgrenze 2",
+          "type": "number",
+          "default": 0.4,
+          "min": 0,
+          "max": 20,
+          "step": 0.1,
+          "required": true
+        },
+        {
+          "id": "bonusNahe28Zwei",
+          "label": "Bonus: 2 nahe Tage ab Warmgrenze 2",
+          "type": "number",
+          "default": 0.6,
+          "min": 0,
+          "max": 20,
+          "step": 0.1,
+          "required": true
+        },
+        {
+          "id": "bonusNahe29Eins",
+          "label": "Bonus: 1 naher Tag ab Warmgrenze 3",
+          "type": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 20,
+          "step": 0.1,
+          "required": true
+        },
+        {
+          "id": "bonusNahe29Zwei",
+          "label": "Bonus: 2 nahe Tage ab Warmgrenze 3",
+          "type": "number",
+          "default": 0.7,
+          "min": 0,
+          "max": 20,
+          "step": 0.1,
+          "required": true
+        },
+        {
+          "id": "bonusNahe30Eins",
+          "label": "Bonus: 1 naher Tag ab Warmgrenze 4",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 20,
+          "step": 0.1,
+          "required": true
+        },
+        {
+          "id": "bonusGesamt28Drei",
+          "label": "Bonus: 3 Tage ab Warmgrenze 2 / 5 Tage",
+          "type": "number",
+          "default": 0.4,
+          "min": 0,
+          "max": 20,
+          "step": 0.1,
+          "required": true
+        },
+        {
+          "id": "bonusGesamt29Zwei",
+          "label": "Bonus: 2 Tage ab Warmgrenze 3 / 5 Tage",
+          "type": "number",
+          "default": 0.4,
+          "min": 0,
+          "max": 20,
+          "step": 0.1,
+          "required": true
+        }
+      ],
+      "dataPoints": [
+        {
+          "output": 1,
+          "path": "msg.payload",
+          "label": "Heizen",
+          "type": "boolean",
+          "description": "true wenn der berechnete Modus Heizen ist."
+        },
+        {
+          "output": 2,
+          "path": "msg.payload",
+          "label": "Kühlen",
+          "type": "boolean",
+          "description": "true wenn der berechnete Modus Kühlen ist."
+        },
+        {
+          "output": 3,
+          "path": "msg.payload",
+          "label": "Aus",
+          "type": "boolean",
+          "description": "true wenn weder Heizen noch Kühlen aktiv ist."
+        },
+        {
+          "output": 1,
+          "path": "msg.info.modus",
+          "label": "Aktueller Modus",
+          "type": "string",
+          "description": "heizen, kuehlen oder aus."
+        },
+        {
+          "output": 1,
+          "path": "msg.info.prognoseMittel",
+          "label": "Gewichtetes Prognosemittel",
+          "type": "number",
+          "unit": "°C"
+        },
+        {
+          "output": 1,
+          "path": "msg.info.minGesamt",
+          "label": "Prognose Minimum",
+          "type": "number",
+          "unit": "°C"
+        },
+        {
+          "output": 1,
+          "path": "msg.info.maxGesamt",
+          "label": "Prognose Maximum",
+          "type": "number",
+          "unit": "°C"
+        },
+        {
+          "output": 1,
+          "path": "msg.info.heizScore",
+          "label": "Heizscore",
+          "type": "number"
+        },
+        {
+          "output": 1,
+          "path": "msg.info.kuehlScore",
+          "label": "Kühlscore",
+          "type": "number"
+        },
+        {
+          "output": 1,
+          "path": "msg.info.kuehlVorstart",
+          "label": "Kühl-Vorstart aktiv",
+          "type": "boolean"
+        },
+        {
+          "output": 1,
+          "path": "msg.info.darfSchalten",
+          "label": "Moduswechsel erlaubt",
+          "type": "boolean"
+        },
+        {
+          "output": 1,
+          "path": "msg.info.grund",
+          "label": "Entscheidungsgrund",
+          "type": "string"
+        },
+        {
+          "output": 1,
+          "path": "msg.info.tage",
+          "label": "Verwendete Prognosetage",
+          "type": "array"
+        },
+        {
+          "scope": "flow",
+          "path": "flow.HK_Modus",
+          "label": "HK Modus",
+          "type": "string"
+        },
+        {
+          "scope": "flow",
+          "path": "flow.HK_LetzteSchaltung",
+          "label": "Letzte Modusschaltung",
+          "type": "number",
+          "unit": "ms"
+        },
+        {
+          "scope": "flow",
+          "path": "flow.HK_Heizen",
+          "label": "Heizen Flow",
+          "type": "boolean"
+        },
+        {
+          "scope": "flow",
+          "path": "flow.HK_Kuehlen",
+          "label": "Kühlen Flow",
+          "type": "boolean"
+        },
+        {
+          "scope": "flow",
+          "path": "flow.HK_Aus",
+          "label": "Aus Flow",
+          "type": "boolean"
+        },
+        {
+          "scope": "flow",
+          "path": "flow.HK_HeizScore",
+          "label": "Heizscore Flow",
+          "type": "number"
+        },
+        {
+          "scope": "flow",
+          "path": "flow.HK_KuehlScore",
+          "label": "Kühlscore Flow",
+          "type": "number"
+        },
+        {
+          "scope": "flow",
+          "path": "flow.HK_PrognoseMittel",
+          "label": "Prognosemittel Flow",
+          "type": "number",
+          "unit": "°C"
+        },
+        {
+          "scope": "flow",
+          "path": "flow.HK_KuehlVorstart",
+          "label": "Kühl-Vorstart Flow",
+          "type": "boolean"
+        },
+        {
+          "scope": "global",
+          "path": "global.HK_Modus",
+          "label": "HK Modus global",
+          "type": "string"
+        },
+        {
+          "scope": "global",
+          "path": "global.HK_Heizen",
+          "label": "Heizen global",
+          "type": "boolean"
+        },
+        {
+          "scope": "global",
+          "path": "global.HK_Kuehlen",
+          "label": "Kühlen global",
+          "type": "boolean"
+        },
+        {
+          "scope": "global",
+          "path": "global.HK_Aus",
+          "label": "Aus global",
+          "type": "boolean"
+        }
+      ]
     }
   }
 }

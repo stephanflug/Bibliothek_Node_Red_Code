@@ -849,3 +849,55 @@ Der Lernzustand wird gespeichert unter:
 ```
 
 Dadurch bleiben Lernwerte nach einem Node-RED-Neustart erhalten.
+
+
+---
+
+## Heizung – Heizen / Kühlen nach Wetterprognose
+
+**Version:** 1.0.0  
+**Ausgänge:** 3 – Heizen / Kühlen / Aus
+
+Die Funktion übernimmt die bisherige Wetter-Prognoselogik und wertet die fünf Tageswerte aus dem Flow Context aus:
+
+```text
+flow.TAG_1_Temp_min / flow.TAG_1_Temp_max
+...
+flow.TAG_5_Temp_min / flow.TAG_5_Temp_max
+```
+
+Kompatibel sind zusätzlich die Schreibweisen `Tag_1_Temp_min/max` bis `Tag_5_Temp_min/max`.
+
+### Ausgänge
+
+```text
+Ausgang 1 → Heizen true/false
+Ausgang 2 → Kühlen true/false
+Ausgang 3 → Aus true/false
+```
+
+### Einstellbar im EBST-Node
+
+Alle wesentlichen Sollwerte sind einstellbar: Heizgrenze, Kühlgrenze, Ein-/Ausschaltschwelle, Mindest-Schaltzeit, Gebäudeträgheit, Wechselabstand, Gewichtungen Tag 1 bis 5, Kühl-Vorstart, Betrachtungstage, Vorstarttemperatur und Vorstart-Score. Zusätzlich sind auch die Warmgrenzen, der Heizbonus für kalte Nächte und sämtliche Kühlscore-Zuschläge als Expertenwerte einstellbar.
+
+### Bestehende Flow-Werte bleiben erhalten
+
+```text
+flow.HK_Modus
+flow.HK_LetzteSchaltung
+```
+
+Zusätzlich werden gesetzt:
+
+```text
+flow.HK_Heizen
+flow.HK_Kuehlen
+flow.HK_Aus
+flow.HK_HeizScore
+flow.HK_KuehlScore
+flow.HK_PrognoseMittel
+flow.HK_KuehlVorstart
+flow.HK_Info
+```
+
+Die wichtigsten Statuswerte werden zusätzlich unter `global.HK_*` bereitgestellt.
