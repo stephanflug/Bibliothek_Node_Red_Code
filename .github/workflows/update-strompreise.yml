@@ -4,26 +4,43 @@ on:
   schedule:
     - cron: "17 3 * * *"
   workflow_dispatch:
+  push:
+    paths:
+      - "scripts/update-strompreise.mjs"
+      - "remote/data/strompreis-sources.json"
+      - ".github/workflows/update-strompreise.yml"
 
 permissions:
   contents: write
 
+concurrency:
+  group: strompreise-aktualisieren
+  cancel-in-progress: false
+
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Repository auschecken
         uses: actions/checkout@v4
+
       - name: Node.js einrichten
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
+
+      - name: Syntax prüfen
+        run: node --check scripts/update-strompreise.mjs
+
       - name: Playwright installieren
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+
       - name: Offizielle Strompreise prüfen
         run: node scripts/update-strompreise.mjs
+
       - name: Änderungen speichern
         run: |
           if git diff --quiet -- remote/data/strompreise.json; then
