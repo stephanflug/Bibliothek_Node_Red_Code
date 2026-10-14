@@ -1,4 +1,4 @@
-name: Strompreise Robust Test
+name: Strompreise Robust Test v2
 
 on:
   push:
