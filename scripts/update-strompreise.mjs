@@ -52,7 +52,20 @@ function parseEnergy(text) {
         }
     }
 
-    // 2) Explizites Netto-/Brutto-Paar.
+    // 2) Produkt-/Preisblatt-Tabelle: "Arbeitspreis Cent/kWh 9,80 11,76".
+    //    Diese Darstellung ist auf dem offiziellen TIWAG-PDF besonders stabil.
+    const tablePair = t.match(
+        /Arbeitspreis[\s\S]{0,100}?(?:Cent|ct)\s*\/?\s*kWh[\s|:;,-]{0,60}(\d{1,2}[,.]\d{1,3})[\s|:;,-]+(\d{1,2}[,.]\d{1,3})/i
+    );
+    if (tablePair) {
+        const net = toNum(tablePair[1]);
+        const gross = toNum(tablePair[2]);
+        if (validCt(net) && validCt(gross) && gross >= net) {
+            return { valueCt: gross, netCt: net, parser: "price-sheet-table" };
+        }
+    }
+
+    // 3) Explizites Netto-/Brutto-Paar.
     const pairPatterns = [
         /(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh\s*exkl\.?\s*(?:20\s*%\s*)?USt[\s\S]{0,100}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh\s*inkl\.?\s*(?:20\s*%\s*)?USt/i,
         /netto[\s\S]{0,100}?(\d{1,2}[,.]\d{1,3})[\s\S]{0,120}?brutto[\s\S]{0,100}?(\d{1,2}[,.]\d{1,3})/i
@@ -68,7 +81,7 @@ function parseEnergy(text) {
         }
     }
 
-    // 3) Allgemeine Brutto-Schreibweisen.
+    // 4) Allgemeine Brutto-Schreibweisen.
     const grossPatterns = [
         /Arbeitspreis[\s\S]{0,180}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh[\s\S]{0,100}?(?:brutto|inkl\.?\s*(?:20\s*%\s*)?USt)/i,
         /(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh[\s\S]{0,80}?(?:brutto|inkl\.?\s*(?:20\s*%\s*)?USt)/i
@@ -79,7 +92,7 @@ function parseEnergy(text) {
         if (gross !== null) return { valueCt: gross, netCt: null, parser: "gross" };
     }
 
-    // 4) Netto-Erkennung als letzter regulärer Weg; 20 % USt werden ergänzt.
+    // 5) Netto-Erkennung als letzter regulärer Weg; 20 % USt werden ergänzt.
     const netPatterns = [
         /Arbeitspreis[\s\S]{0,180}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh[\s\S]{0,100}?(?:netto|exkl\.?\s*(?:20\s*%\s*)?USt)/i,
         /(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh[\s\S]{0,80}?(?:netto|exkl\.?\s*(?:20\s*%\s*)?USt)/i
