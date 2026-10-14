@@ -7,73 +7,370 @@ const SOURCES_FILE = path.join(ROOT, "remote/data/strompreis-sources.json");
 const CACHE_FILE = path.join(ROOT, "remote/data/strompreise.json");
 const sources = JSON.parse(await fs.readFile(SOURCES_FILE, "utf8"));
 
-const toNum = v => Number(String(v).replace(",", "."));
-const valid = v => Number.isFinite(v) && v > 0 && v <= 100;
-const normalize = s => String(s || "").normalize("NFKC").replace(/[\u00A0\u202F\u2007]/g, " ").replace(/[\u200B\u00AD]/g, "").replace(/\s+/g, " ").trim();
+const toNum = value => Number(String(value).replace(",", "."));
+const validCt = value => Number.isFinite(value) && value > 0 && value <= 100;
+const round3 = value => Math.round(value * 1000) / 1000;
+const normalize = value => String(value || "")
+    .normalize("NFKC")
+    .replace(/[\u00A0\u202F\u2007]/g, " ")
+    .replace(/[\u200B\u00AD]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const sourceList = value => Array.isArray(value) ? value.filter(Boolean) : (value ? [value] : []);
+
+function findNumber(text, regex, group = 1) {
+    const match = text.match(regex);
+    if (!match) return null;
+    const value = toNum(match[group]);
+    return validCt(value) ? value : null;
+}
 
 function parseEnergy(text) {
-  let m = text.match(/(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh\s*inkl\.?\s*USt/i);
-  if (m && valid(toNum(m[1]))) return { valueCt: toNum(m[1]), netCt: null };
-  m = text.match(/(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh\s*exkl\.?\s*USt/i);
-  if (m && valid(toNum(m[1]))) {
-    const netCt = toNum(m[1]);
-    return { valueCt: Math.round(netCt * 1.2 * 1000) / 1000, netCt };
-  }
-  throw new Error("TIWAG Energiepreis nicht gefunden");
+    const t = normalize(text);
+
+    // 1) Bevorzugt das reguläre Haushaltsprodukt "comfort privat".
+    const comfortMatch = t.match(/comfort\s+privat([\s\S]{0,1600})/i);
+    const comfort = comfortMatch ? comfortMatch[1] : "";
+
+    if (comfort) {
+        const comfortPatterns = [
+            /Arbeitspreis[^0-9]{0,120}(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh[\s\S]{0,120}?(?:brutto|inkl\.?\s*(?:20\s*%\s*)?USt)/i,
+            /Arbeitspreis[\s\S]{0,220}?(?:brutto|inkl\.?\s*(?:20\s*%\s*)?USt)[^0-9]{0,120}(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/i,
+            /Arbeitspreis[^0-9]{0,120}(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/i
+        ];
+
+        for (const re of comfortPatterns) {
+            const gross = findNumber(comfort, re);
+            if (gross !== null) {
+                const net = findNumber(
+                    comfort,
+                    /(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh[\s\S]{0,80}?exkl\.?\s*(?:20\s*%\s*)?USt/i
+                );
+                return { valueCt: gross, netCt: net, parser: "comfort-privat" };
+            }
+        }
+    }
+
+    // 2) Explizites Netto-/Brutto-Paar.
+    const pairPatterns = [
+        /(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh\s*exkl\.?\s*(?:20\s*%\s*)?USt[\s\S]{0,100}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh\s*inkl\.?\s*(?:20\s*%\s*)?USt/i,
+        /netto[\s\S]{0,100}?(\d{1,2}[,.]\d{1,3})[\s\S]{0,120}?brutto[\s\S]{0,100}?(\d{1,2}[,.]\d{1,3})/i
+    ];
+
+    for (const re of pairPatterns) {
+        const m = t.match(re);
+        if (!m) continue;
+        const net = toNum(m[1]);
+        const gross = toNum(m[2]);
+        if (validCt(net) && validCt(gross) && gross >= net) {
+            return { valueCt: gross, netCt: net, parser: "net-gross-pair" };
+        }
+    }
+
+    // 3) Allgemeine Brutto-Schreibweisen.
+    const grossPatterns = [
+        /Arbeitspreis[\s\S]{0,180}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh[\s\S]{0,100}?(?:brutto|inkl\.?\s*(?:20\s*%\s*)?USt)/i,
+        /(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh[\s\S]{0,80}?(?:brutto|inkl\.?\s*(?:20\s*%\s*)?USt)/i
+    ];
+
+    for (const re of grossPatterns) {
+        const gross = findNumber(t, re);
+        if (gross !== null) return { valueCt: gross, netCt: null, parser: "gross" };
+    }
+
+    // 4) Netto-Erkennung als letzter regulärer Weg; 20 % USt werden ergänzt.
+    const netPatterns = [
+        /Arbeitspreis[\s\S]{0,180}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh[\s\S]{0,100}?(?:netto|exkl\.?\s*(?:20\s*%\s*)?USt)/i,
+        /(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh[\s\S]{0,80}?(?:netto|exkl\.?\s*(?:20\s*%\s*)?USt)/i
+    ];
+
+    for (const re of netPatterns) {
+        const net = findNumber(t, re);
+        if (net !== null) return { valueCt: round3(net * 1.2), netCt: net, parser: "net-plus-vat" };
+    }
+
+    throw new Error("TIWAG Energiepreis nicht gefunden");
 }
 
 function parseGrid(text) {
-  for (const re of [
-    /in\s+Tirol[^.]{0,250}?lediglich\s*(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/i,
-    /Tirol[^.]{0,200}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/i,
-    /Netzentgelt\w*[^.]{0,250}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/i
-  ]) {
-    const m = text.match(re); const n = m ? toNum(m[1]) : NaN;
-    if (valid(n)) return n;
-  }
-  throw new Error("TINETZ Netzentgelt nicht gefunden");
+    const t = normalize(text);
+    const patterns = [
+        /in\s+Tirol[\s\S]{0,350}?lediglich\s*(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/i,
+        /Tirol[\s\S]{0,280}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/i,
+        /Netzentgelt\w*[\s\S]{0,300}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/i
+    ];
+
+    for (const re of patterns) {
+        const value = findNumber(t, re);
+        if (value !== null) return { valueCt: value, parser: "tinetz-text" };
+    }
+
+    throw new Error("TINETZ Netzentgelt nicht gefunden");
 }
 
 function parseFeedIn(text) {
-  const rows = [];
-  const re = /Q\s*([1-4])\s*(\d{4})[^\d]{0,100}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/gi;
-  let m;
-  while ((m = re.exec(text)) !== null) {
-    const row = { quarter: Number(m[1]), year: Number(m[2]), valueCt: toNum(m[3]) };
-    if (row.quarter >= 1 && row.quarter <= 4 && row.year >= 2000 && valid(row.valueCt)) rows.push(row);
-  }
-  if (!rows.length) throw new Error("TIWAG PV-Einspeisepreis nicht gefunden");
-  const now = new Date(); const cy = now.getUTCFullYear(); const cq = Math.floor(now.getUTCMonth() / 3) + 1;
-  const key = r => r.year * 4 + r.quarter; const ck = cy * 4 + cq;
-  return rows.find(r => r.year === cy && r.quarter === cq) || rows.filter(r => key(r) <= ck).sort((a,b) => key(b)-key(a))[0] || rows.sort((a,b) => key(b)-key(a))[0];
+    const t = normalize(text);
+    const rows = [];
+
+    const patterns = [
+        { re: /Q\s*([1-4])\s*(\d{4})[^\d]{0,120}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/gi, reversed: false },
+        { re: /(\d{4})\s*Q\s*([1-4])[^\d]{0,120}?(\d{1,2}[,.]\d{1,3})\s*(?:Cent|ct)\s*\/?\s*kWh/gi, reversed: true }
+    ];
+
+    for (const item of patterns) {
+        let m;
+        while ((m = item.re.exec(t)) !== null) {
+            const quarter = item.reversed ? Number(m[2]) : Number(m[1]);
+            const year = item.reversed ? Number(m[1]) : Number(m[2]);
+            const valueCt = toNum(m[3]);
+
+            if (
+                quarter >= 1 && quarter <= 4 &&
+                year >= 2000 && year <= 2100 &&
+                validCt(valueCt)
+            ) {
+                rows.push({ quarter, year, valueCt });
+            }
+        }
+    }
+
+    const unique = [...new Map(
+        rows.map(row => [row.year + "-" + row.quarter + "-" + row.valueCt, row])
+    ).values()];
+
+    if (!unique.length) throw new Error("TIWAG PV-Einspeisepreis nicht gefunden");
+
+    const now = new Date();
+    const currentYear = now.getUTCFullYear();
+    const currentQuarter = Math.floor(now.getUTCMonth() / 3) + 1;
+    const currentKey = currentYear * 4 + currentQuarter;
+    const key = row => row.year * 4 + row.quarter;
+
+    const selected =
+        unique.find(row => row.year === currentYear && row.quarter === currentQuarter) ||
+        unique.filter(row => key(row) <= currentKey).sort((a, b) => key(b) - key(a))[0] ||
+        unique.sort((a, b) => key(b) - key(a))[0];
+
+    return {
+        valueCt: selected.valueCt,
+        quarter: selected.quarter,
+        year: selected.year,
+        parser: "quarter-table"
+    };
 }
 
-async function loadText(browser, url) {
-  const page = await browser.newPage({ locale: "de-AT", userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36" });
-  try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
-    await page.waitForTimeout(2500);
-    return normalize(await page.locator("body").innerText());
-  } finally { await page.close(); }
+async function loadText(browser, url, attempt = 1) {
+    const page = await browser.newPage({
+        locale: "de-AT",
+        userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
+    });
+
+    try {
+        const response = await page.goto(url, {
+            waitUntil: "domcontentloaded",
+            timeout: 60000
+        });
+
+        const status = response ? response.status() : 0;
+        if (status >= 400) throw new Error("HTTP " + status);
+
+        await page.waitForLoadState("networkidle", { timeout: 12000 }).catch(() => {});
+        await page.waitForTimeout(attempt === 1 ? 1800 : 3500);
+
+        const body = normalize(await page.locator("body").innerText({ timeout: 15000 }));
+        if (body.length < 100) throw new Error("Seiteninhalt zu kurz (" + body.length + " Zeichen)");
+
+        return body;
+    } finally {
+        await page.close();
+    }
+}
+
+async function readAndParse(browser, urls, parser, label) {
+    const attempts = [];
+
+    for (const url of sourceList(urls)) {
+        for (let attempt = 1; attempt <= 2; attempt++) {
+            try {
+                const text = await loadText(browser, url, attempt);
+                const parsed = parser(text);
+                console.log("✓ " + label + ": " + url + " (" + (parsed.parser || "Parser") + ")");
+                return { parsed, sourceUrl: url, fallback: false };
+            } catch (err) {
+                attempts.push(url + " [Versuch " + attempt + "]: " + err.message);
+                console.warn("⚠ " + label + ": " + url + ", Versuch " + attempt + ": " + err.message);
+            }
+        }
+    }
+
+    const error = new Error(label + ": keine Quelle erfolgreich. " + attempts.join(" | "));
+    error.attempts = attempts;
+    throw error;
+}
+
+function oldEnergy(old) {
+    const valueCt = Number(old && old.energy && old.energy.valueCt);
+    if (!validCt(valueCt)) return null;
+
+    const netRaw = old && old.energy ? old.energy.netCt : null;
+    const netCt = Number(netRaw);
+
+    return {
+        parsed: {
+            valueCt,
+            netCt: Number.isFinite(netCt) ? netCt : null,
+            parser: "cache-fallback"
+        },
+        sourceUrl: old && old.energy && old.energy.sourceUrl
+            ? old.energy.sourceUrl
+            : (sourceList(sources.energy)[0] || null),
+        fallback: true
+    };
+}
+
+function oldGrid(old) {
+    const valueCt = Number(old && old.grid && old.grid.valueCt);
+    if (!validCt(valueCt)) return null;
+
+    return {
+        parsed: { valueCt, parser: "cache-fallback" },
+        sourceUrl: old && old.grid && old.grid.sourceUrl
+            ? old.grid.sourceUrl
+            : (sourceList(sources.grid)[0] || null),
+        fallback: true
+    };
+}
+
+function oldFeedIn(old) {
+    const valueCt = Number(old && old.feedIn && old.feedIn.valueCt);
+    const quarter = Number(old && old.feedIn && old.feedIn.quarter);
+    const year = Number(old && old.feedIn && old.feedIn.year);
+
+    if (
+        !validCt(valueCt) ||
+        !(quarter >= 1 && quarter <= 4) ||
+        !(year >= 2000)
+    ) {
+        return null;
+    }
+
+    return {
+        parsed: {
+            valueCt,
+            quarter,
+            year,
+            parser: "cache-fallback"
+        },
+        sourceUrl: old && old.feedIn && old.feedIn.sourceUrl
+            ? old.feedIn.sourceUrl
+            : (sourceList(sources.feedIn)[0] || null),
+        fallback: true
+    };
+}
+
+let old = null;
+try {
+    old = JSON.parse(await fs.readFile(CACHE_FILE, "utf8"));
+} catch {
+    old = null;
 }
 
 const browser = await chromium.launch({ headless: true });
-let energyText, gridText, feedText;
-try {
-  [energyText, gridText, feedText] = await Promise.all([loadText(browser, sources.energy), loadText(browser, sources.grid), loadText(browser, sources.feedIn)]);
-} finally { await browser.close(); }
 
-const e = parseEnergy(energyText); const g = parseGrid(gridText); const f = parseFeedIn(feedText);
+let energyResult;
+let gridResult;
+let feedInResult;
+const errors = [];
+
+try {
+    const results = await Promise.allSettled([
+        readAndParse(browser, sources.energy, parseEnergy, "TIWAG Energiepreis"),
+        readAndParse(browser, sources.grid, parseGrid, "TINETZ Netzentgelt"),
+        readAndParse(browser, sources.feedIn, parseFeedIn, "TIWAG PV-Einspeisung")
+    ]);
+
+    energyResult = results[0].status === "fulfilled" ? results[0].value : null;
+    gridResult = results[1].status === "fulfilled" ? results[1].value : null;
+    feedInResult = results[2].status === "fulfilled" ? results[2].value : null;
+
+    if (!energyResult) {
+        errors.push(results[0].reason && results[0].reason.message ? results[0].reason.message : "TIWAG Energiepreis unbekannter Fehler");
+        energyResult = oldEnergy(old);
+    }
+
+    if (!gridResult) {
+        errors.push(results[1].reason && results[1].reason.message ? results[1].reason.message : "TINETZ Netzentgelt unbekannter Fehler");
+        gridResult = oldGrid(old);
+    }
+
+    if (!feedInResult) {
+        errors.push(results[2].reason && results[2].reason.message ? results[2].reason.message : "TIWAG PV-Einspeisung unbekannter Fehler");
+        feedInResult = oldFeedIn(old);
+    }
+} finally {
+    await browser.close();
+}
+
+if (!energyResult || !gridResult || !feedInResult) {
+    throw new Error(
+        "Strompreis-Aktualisierung fehlgeschlagen: Mindestens ein Wert konnte weder gelesen noch aus dem Cache übernommen werden. " +
+        errors.join(" || ")
+    );
+}
+
+if (errors.length) {
+    console.warn("⚠ Mindestens eine Quelle konnte aktuell nicht gelesen werden; gültiger letzter Cachewert wird verwendet:");
+    for (const error of errors) console.warn("  - " + error);
+}
+
 const values = {
-  energy: { valueCt: e.valueCt, netCt: e.netCt, sourceUrl: sources.energy },
-  grid: { valueCt: g, sourceUrl: sources.grid },
-  feedIn: { valueCt: f.valueCt, quarter: f.quarter, year: f.year, sourceUrl: sources.feedIn }
+    energy: {
+        valueCt: energyResult.parsed.valueCt,
+        netCt: energyResult.parsed.netCt,
+        sourceUrl: energyResult.sourceUrl
+    },
+    grid: {
+        valueCt: gridResult.parsed.valueCt,
+        sourceUrl: gridResult.sourceUrl
+    },
+    feedIn: {
+        valueCt: feedInResult.parsed.valueCt,
+        quarter: feedInResult.parsed.quarter,
+        year: feedInResult.parsed.year,
+        sourceUrl: feedInResult.sourceUrl
+    }
 };
-let old = null; try { old = JSON.parse(await fs.readFile(CACHE_FILE, "utf8")); } catch {}
-const same = old && Number(old.energy?.valueCt)===Number(values.energy.valueCt) && Number(old.grid?.valueCt)===Number(values.grid.valueCt) && Number(old.feedIn?.valueCt)===Number(values.feedIn.valueCt) && Number(old.feedIn?.quarter)===Number(values.feedIn.quarter) && Number(old.feedIn?.year)===Number(values.feedIn.year) && old.energy?.sourceUrl===values.energy.sourceUrl && old.grid?.sourceUrl===values.grid.sourceUrl && old.feedIn?.sourceUrl===values.feedIn.sourceUrl;
-if (same) { console.log("Strompreise unverändert – Cache bleibt bestehen."); process.exit(0); }
-const out = { schema: 1, updatedAt: new Date().toISOString(), ...values };
+
+console.log("Ermittelte Werte:", JSON.stringify(values, null, 2));
+
+const oldEnergyNet = old && old.energy && old.energy.netCt !== undefined && old.energy.netCt !== null
+    ? Number(old.energy.netCt)
+    : null;
+const newEnergyNet = values.energy.netCt !== undefined && values.energy.netCt !== null
+    ? Number(values.energy.netCt)
+    : null;
+
+const same = old &&
+    Number(old.energy && old.energy.valueCt) === Number(values.energy.valueCt) &&
+    oldEnergyNet === newEnergyNet &&
+    Number(old.grid && old.grid.valueCt) === Number(values.grid.valueCt) &&
+    Number(old.feedIn && old.feedIn.valueCt) === Number(values.feedIn.valueCt) &&
+    Number(old.feedIn && old.feedIn.quarter) === Number(values.feedIn.quarter) &&
+    Number(old.feedIn && old.feedIn.year) === Number(values.feedIn.year);
+
+if (same) {
+    console.log("Strompreise unverändert – Cache bleibt bestehen.");
+    process.exit(0);
+}
+
+const out = {
+    schema: 1,
+    updatedAt: new Date().toISOString(),
+    ...values
+};
+
 await fs.mkdir(path.dirname(CACHE_FILE), { recursive: true });
 await fs.writeFile(CACHE_FILE, JSON.stringify(out, null, 2) + "\n", "utf8");
-console.log("Strompreise aktualisiert:", out);
+
+console.log("Strompreise aktualisiert:", JSON.stringify(out, null, 2));
