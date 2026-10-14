@@ -1,0 +1,32 @@
+name: Strompreise Robust Test
+
+on:
+  push:
+    paths:
+      - ".github/workflows/test-strompreise-robust.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Syntax prüfen
+        run: node --check scripts/update-strompreise.mjs
+      - name: Playwright installieren
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Strompreislesung testen
+        run: node scripts/update-strompreise.mjs
+      - name: Ergebnis anzeigen
+        run: |
+          cat remote/data/strompreise.json
+          git diff -- remote/data/strompreise.json || true
