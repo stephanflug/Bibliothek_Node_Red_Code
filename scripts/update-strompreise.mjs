@@ -225,6 +225,36 @@ async function loadTextDirect(url) {
     }
 }
 
+async function loadTextReader(url) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 45000);
+    const readerUrl = "https://r.jina.ai/" + url;
+
+    try {
+        const response = await fetch(readerUrl, {
+            method: "GET",
+            redirect: "follow",
+            signal: controller.signal,
+            headers: {
+                "User-Agent": "EBST-Strompreis-Updater/2.0",
+                "Accept": "text/plain,text/markdown;q=0.9,*/*;q=0.5",
+                "Cache-Control": "no-cache"
+            }
+        });
+
+        if (!response.ok) throw new Error("Reader HTTP " + response.status);
+
+        const text = normalize(await response.text());
+        if (text.length < 100) {
+            throw new Error("Reader-Inhalt zu kurz (" + text.length + " Zeichen)");
+        }
+
+        return text;
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
 async function loadTextBrowser(browser, url, attempt = 1) {
     const page = await browser.newPage({
         locale: "de-AT",
@@ -279,7 +309,19 @@ async function readAndParse(browser, urls, parser, label) {
             console.warn("⚠ " + label + ": " + url + ", Direktabruf: " + err.message);
         }
 
-        // Strategie B: Browser-Fallback mit zwei Versuchen.
+        // Strategie B: Text-Reader-Proxy. Er liest die offizielle Zielseite,
+        // wenn deren Bot-Schutz GitHub Actions direkt blockiert.
+        try {
+            const text = await loadTextReader(url);
+            const parsed = parser(text);
+            console.log("✓ " + label + ": " + url + " (Reader / " + (parsed.parser || "Parser") + ")");
+            return { parsed, sourceUrl: url, fallback: false, transport: "reader" };
+        } catch (err) {
+            attempts.push(url + " [Reader]: " + err.message);
+            console.warn("⚠ " + label + ": " + url + ", Reader: " + err.message);
+        }
+
+        // Strategie C: Browser-Fallback mit zwei Versuchen.
         for (let attempt = 1; attempt <= 2; attempt++) {
             try {
                 const text = await loadTextBrowser(browser, url, attempt);
