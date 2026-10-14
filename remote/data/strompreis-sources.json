@@ -1,11 +1,14 @@
 {
   "energy": [
-    "https://www.tiwag.at/privat/",
+    "https://www.tiwag.at/privat/strom/stromprodukt/comfort-privat/",
+    "https://www.tiwag.at/uploads/tx_bh/tiwag_comfort_privat_produkt_und_preisblatt.pdf",
     "https://www.tiwag.at/privat/strom/stromprodukte/informationen-zur-tiwag-preisanpassung/",
+    "https://www.tiwag.at/privat/",
     "https://www.tiwag.at/tutwas/"
   ],
   "grid": [
-    "https://www.tinetz.at/infobereich/allgemeines/netztarifaenderungen-ab-2026/"
+    "https://www.tinetz.at/infobereich/allgemeines/netztarifaenderungen-ab-2026/",
+    "https://www.tinetz.at/uploads/tx_bh/765/tinetz_sne-v_2026.pdf?mod=1766133961"
   ],
   "feedIn": [
     "https://www.tiwag.at/privat/photovoltaik/tiwag-pv-einspeisung/"
