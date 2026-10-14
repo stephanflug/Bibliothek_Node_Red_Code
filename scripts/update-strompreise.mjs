@@ -160,7 +160,72 @@ function parseFeedIn(text) {
     };
 }
 
-async function loadText(browser, url, attempt = 1) {
+function decodeHtmlEntities(value) {
+    return String(value || "")
+        .replace(/&nbsp;|&#160;|&#xA0;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&quot;/gi, "\"")
+        .replace(/&#39;|&apos;/gi, "'")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+        .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)));
+}
+
+function htmlToText(html) {
+    return normalize(
+        decodeHtmlEntities(
+            String(html || "")
+                .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
+                .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
+                .replace(/<noscript\b[\s\S]*?<\/noscript>/gi, " ")
+                .replace(/<!--[\s\S]*?-->/g, " ")
+                .replace(/<br\s*\/?>/gi, " ")
+                .replace(/<\/(?:p|div|li|tr|td|th|h[1-6]|section|article)>/gi, " ")
+                .replace(/<[^>]+>/g, " ")
+        )
+    );
+}
+
+async function loadTextDirect(url) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
+    try {
+        const response = await fetch(url, {
+            method: "GET",
+            redirect: "follow",
+            signal: controller.signal,
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "de-AT,de;q=0.9,en;q=0.7",
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache"
+            }
+        });
+
+        if (!response.ok) throw new Error("HTTP " + response.status);
+
+        const contentType = String(response.headers.get("content-type") || "");
+        if (!/text\/html|application\/xhtml\+xml|text\/plain/i.test(contentType)) {
+            throw new Error("unerwarteter Content-Type: " + (contentType || "unbekannt"));
+        }
+
+        const html = await response.text();
+        const text = htmlToText(html);
+
+        if (text.length < 100) {
+            throw new Error("Direktabruf Inhalt zu kurz (" + text.length + " Zeichen)");
+        }
+
+        return text;
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+async function loadTextBrowser(browser, url, attempt = 1) {
     const page = await browser.newPage({
         locale: "de-AT",
         userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
@@ -178,8 +243,19 @@ async function loadText(browser, url, attempt = 1) {
         await page.waitForLoadState("networkidle", { timeout: 12000 }).catch(() => {});
         await page.waitForTimeout(attempt === 1 ? 1800 : 3500);
 
-        const body = normalize(await page.locator("body").innerText({ timeout: 15000 }));
-        if (body.length < 100) throw new Error("Seiteninhalt zu kurz (" + body.length + " Zeichen)");
+        let body = "";
+        try {
+            body = normalize(await page.locator("body").innerText({ timeout: 15000 }));
+        } catch {}
+
+        if (body.length < 100) {
+            const html = await page.content().catch(() => "");
+            body = htmlToText(html);
+        }
+
+        if (body.length < 100) {
+            throw new Error("Browserinhalt zu kurz (" + body.length + " Zeichen)");
+        }
 
         return body;
     } finally {
@@ -191,15 +267,28 @@ async function readAndParse(browser, urls, parser, label) {
     const attempts = [];
 
     for (const url of sourceList(urls)) {
+        // Strategie A: direkter HTTP-Abruf. Funktioniert auch dann, wenn JavaScript/Browser
+        // durch Bot-Schutz oder leere DOM-Seiten behindert wird.
+        try {
+            const text = await loadTextDirect(url);
+            const parsed = parser(text);
+            console.log("✓ " + label + ": " + url + " (Direktabruf / " + (parsed.parser || "Parser") + ")");
+            return { parsed, sourceUrl: url, fallback: false, transport: "direct" };
+        } catch (err) {
+            attempts.push(url + " [Direktabruf]: " + err.message);
+            console.warn("⚠ " + label + ": " + url + ", Direktabruf: " + err.message);
+        }
+
+        // Strategie B: Browser-Fallback mit zwei Versuchen.
         for (let attempt = 1; attempt <= 2; attempt++) {
             try {
-                const text = await loadText(browser, url, attempt);
+                const text = await loadTextBrowser(browser, url, attempt);
                 const parsed = parser(text);
-                console.log("✓ " + label + ": " + url + " (" + (parsed.parser || "Parser") + ")");
-                return { parsed, sourceUrl: url, fallback: false };
+                console.log("✓ " + label + ": " + url + " (Browser / " + (parsed.parser || "Parser") + ")");
+                return { parsed, sourceUrl: url, fallback: false, transport: "browser" };
             } catch (err) {
-                attempts.push(url + " [Versuch " + attempt + "]: " + err.message);
-                console.warn("⚠ " + label + ": " + url + ", Versuch " + attempt + ": " + err.message);
+                attempts.push(url + " [Browser Versuch " + attempt + "]: " + err.message);
+                console.warn("⚠ " + label + ": " + url + ", Browser Versuch " + attempt + ": " + err.message);
             }
         }
     }
