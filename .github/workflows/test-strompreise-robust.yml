@@ -1,4 +1,4 @@
-name: Strompreise Robust Test v3
+name: Strompreise Robust Test v4
 
 on:
   push:
@@ -24,6 +24,12 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+      - name: Reader-Diagnose Energie und Netz
+        run: |
+          echo "===== TIWAG PRIVAT ====="
+          curl -Ls --max-time 45 "https://r.jina.ai/https://www.tiwag.at/privat/" | grep -Ei -C 4 "comfort privat|Arbeitspreis|11,76|9,80" | head -n 120 || true
+          echo "===== TINETZ ====="
+          curl -Ls --max-time 45 "https://r.jina.ai/https://www.tinetz.at/infobereich/allgemeines/netztarifaenderungen-ab-2026/" | grep -Ei -C 5 "8,66|9,40|Cent/kWh|Tirol" | head -n 140 || true
       - name: Strompreislesung testen
         run: node scripts/update-strompreise.mjs
       - name: Ergebnis anzeigen
