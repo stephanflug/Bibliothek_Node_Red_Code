@@ -1,18 +1,18 @@
 {
   "schema": 1,
-  "updatedAt": "2026-08-20T13:06:00.000Z",
+  "updatedAt": "2026-10-14T09:08:22.823Z",
   "energy": {
     "valueCt": 11.76,
     "netCt": 9.8,
-    "sourceUrl": "https://www.tiwag.at/tutwas/"
+    "sourceUrl": "https://www.tiwag.at/uploads/tx_bh/tiwag_comfort_privat_produkt_und_preisblatt.pdf"
   },
   "grid": {
     "valueCt": 8.66,
     "sourceUrl": "https://www.tinetz.at/infobereich/allgemeines/netztarifaenderungen-ab-2026/"
   },
   "feedIn": {
-    "valueCt": 8.29,
-    "quarter": 3,
+    "valueCt": 15.31,
+    "quarter": 4,
     "year": 2026,
     "sourceUrl": "https://www.tiwag.at/privat/photovoltaik/tiwag-pv-einspeisung/"
   }
